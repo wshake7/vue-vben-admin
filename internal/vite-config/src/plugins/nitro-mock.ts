@@ -2,12 +2,29 @@ import type { PluginOption } from 'vite';
 
 import type { NitroMockPluginOptions } from '../typing';
 
-import { colors, consola, getPackage } from '@vben/node-utils';
+import { isAbsolute, join, resolve } from 'node:path';
+
+import {
+  colors,
+  consola,
+  findMonorepoRoot,
+  getPackage,
+} from '@vben/node-utils';
 
 import getPort from 'get-port';
 import { build, createDevServer, createNitro, prepare } from 'nitropack';
 
 const hmrKeyRe = /^runtimeConfig\.|routeRules\./;
+
+/**
+ * 将 $/xxx 形式的路径解析为 <外层 monorepo 根>/xxx
+ * 例如 findMonorepoRoot() 指向 vue-vben-admin 时，$/apps/backend-mock-template
+ * 会解析到 trellis-demo/apps/backend-mock-template
+ */
+function resolveDollarPath(p: string): string {
+  const outerRoot = join(findMonorepoRoot(), '..', '..');
+  return resolve(outerRoot, p.slice(2));
+}
 
 export const viteNitroMockPlugin = ({
   mockServerPackage = '@vben/backend-mock',
@@ -21,15 +38,31 @@ export const viteNitroMockPlugin = ({
         return;
       }
 
-      const pkg = await getPackage(mockServerPackage);
-      if (!pkg) {
-        consola.log(
-          `Package ${mockServerPackage} not found. Skip mock server.`,
-        );
-        return;
+      // mockServerPackage 支持三种形式：
+      //   - 绝对/相对路径（./ ../ /abs）：原样 resolve
+      //   - $/xxx：解析为 <外层 monorepo 根>/apps/xxx
+      //   - 其它：当作包名走 workspace 查找
+      let rootDir: string;
+      if (
+        isAbsolute(mockServerPackage) ||
+        mockServerPackage.startsWith('./') ||
+        mockServerPackage.startsWith('../')
+      ) {
+        rootDir = resolve(mockServerPackage);
+      } else if (mockServerPackage.startsWith('$/')) {
+        rootDir = resolveDollarPath(mockServerPackage);
+      } else {
+        const pkg = await getPackage(mockServerPackage);
+        if (!pkg) {
+          consola.log(
+            `Package ${mockServerPackage} not found. Skip mock server.`,
+          );
+          return;
+        }
+        rootDir = pkg.dir;
       }
 
-      runNitroServer(pkg.dir, port, verbose);
+      runNitroServer(rootDir, port, verbose);
 
       const _printUrls = server.printUrls;
       server.printUrls = () => {

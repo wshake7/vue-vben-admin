@@ -24,6 +24,17 @@ function defineApplicationConfig(userConfigPromise?: DefineApplicationOptions) {
     const isBuild = command === 'build';
     const env = loadEnv(mode, root);
 
+    // 合并 env 派生的 nitroMockOptions 与用户 application.nitroMockOptions
+    // env 优先作为底座，application 的设置覆盖之
+    const { nitroMockOptions: envNitroMockOptions, ...envConfigRest } =
+      envConfig;
+    const { nitroMockOptions: appNitroMockOptions, ...applicationRest } =
+      application;
+    const nitroMockOptions = {
+      ...envNitroMockOptions,
+      ...appNitroMockOptions,
+    };
+
     const plugins = await loadApplicationPlugins({
       archiver: true,
       archiverPluginOptions: {},
@@ -41,7 +52,7 @@ function defineApplicationConfig(userConfigPromise?: DefineApplicationOptions) {
       license: true,
       mode,
       nitroMock: !isBuild,
-      nitroMockOptions: {},
+      nitroMockOptions,
       print: !isBuild,
       printInfoMap: {
         'Vben Admin Docs': 'https://doc.vben.pro',
@@ -49,8 +60,8 @@ function defineApplicationConfig(userConfigPromise?: DefineApplicationOptions) {
       pwa: true,
       pwaOptions: getDefaultPwaOptions(appTitle),
       vxeTableLazyImport: true,
-      ...envConfig,
-      ...application,
+      ...envConfigRest,
+      ...applicationRest,
     });
 
     const { injectGlobalScss = true } = application;

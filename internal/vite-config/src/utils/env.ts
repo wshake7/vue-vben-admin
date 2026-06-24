@@ -83,6 +83,7 @@ async function loadAndConvertEnv(
     VITE_DEVTOOLS,
     VITE_INJECT_APP_LOADING,
     VITE_NITRO_MOCK,
+    VITE_NITRO_MOCK_SERVER_PACKAGE,
     VITE_PORT,
     VITE_PWA,
     VITE_VISUALIZER,
@@ -101,6 +102,9 @@ async function loadAndConvertEnv(
     devtools: getBoolean(VITE_DEVTOOLS),
     injectAppLoading: getBoolean(VITE_INJECT_APP_LOADING),
     nitroMock: getBoolean(VITE_NITRO_MOCK),
+    nitroMockOptions: VITE_NITRO_MOCK_SERVER_PACKAGE
+      ? { mockServerPackage: VITE_NITRO_MOCK_SERVER_PACKAGE }
+      : undefined,
     port: getNumber(VITE_PORT, 5173),
     pwa: getBoolean(VITE_PWA),
     visualizer: getBoolean(VITE_VISUALIZER),
