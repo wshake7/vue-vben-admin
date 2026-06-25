@@ -1,9 +1,30 @@
 import type { VbenFormProps } from '#/adapter/form';
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { DictData, DictType } from '#/api/system/dict';
 
 import { z } from '#/adapter/form';
+import { fetchAllDictTypesApi } from '#/api/system/dict';
 
-import type { DictData, DictType } from '#/api/system/dict';
+/* ============================================================
+ * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）
+ * ============================================================ */
+function useDictTypeCodeOptions(multiple = false) {
+  return {
+    component: 'ApiSelect',
+    componentProps: () => ({
+      api: () => fetchAllDictTypesApi(),
+      afterFetch: (data: DictType[]) =>
+        data.map((t) => ({
+          label: `${t.name}（${t.code}）`,
+          value: t.code,
+        })),
+      allowClear: true,
+      filterable: true,
+      multiple,
+      placeholder: '请选择类型编码',
+    }),
+  };
+}
 
 /* ============================================================
  * 字典类型编码校验：^[a-z][a-z0-9_]{0,63}$
@@ -109,22 +130,10 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
  * 字典类型 列表检索 schema
  * ============================================================ */
 export function useTypeSearchSchema(): VbenFormProps['schema'] {
+  const typeCode = useDictTypeCodeOptions(true);
   return [
-    { component: 'Input', fieldName: 'code', label: '类型编码' },
+    { ...typeCode, fieldName: 'code', label: '类型编码' },
     { component: 'Input', fieldName: 'name', label: '类型名称' },
-    {
-      component: 'Select',
-      fieldName: 'status',
-      label: '状态',
-      componentProps: {
-        allowClear: true,
-        options: [
-          { label: '启用', value: 1 },
-          { label: '禁用', value: 0 },
-        ],
-        placeholder: '状态',
-      },
-    },
   ];
 }
 
@@ -132,30 +141,21 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
  * 字典项 列表检索 schema
  * ============================================================ */
 export function useDataSearchSchema(): VbenFormProps['schema'] {
+  const typeCode = useDictTypeCodeOptions();
   return [
+    { ...typeCode, fieldName: 'typeCode', label: '类型编码' },
     { component: 'Input', fieldName: 'value', label: '字典值' },
-    { component: 'Input', fieldName: 'label', label: '字典标签' },
-    {
-      component: 'Select',
-      fieldName: 'status',
-      label: '状态',
-      componentProps: {
-        allowClear: true,
-        options: [
-          { label: '启用', value: 1 },
-          { label: '禁用', value: 0 },
-        ],
-        placeholder: '状态',
-      },
-    },
   ];
 }
 
 /* ============================================================
  * 表格列定义
+ * 第一列 type='checkbox' 用于多选；批量工具栏由父组件通过 gridEvents
+ * （checkboxChange / checkboxAll）拿到勾选行后渲染。
  * ============================================================ */
 export function useTypeColumns(): VxeTableGridOptions['columns'] {
   return [
+    { type: 'checkbox', width: 44, fixed: 'left' },
     { field: 'id', title: 'ID', width: 80 },
     { field: 'code', title: '类型编码', width: 140, showOverflow: 'tooltip' },
     { field: 'name', title: '类型名称', width: 140, showOverflow: 'tooltip' },
@@ -191,7 +191,14 @@ export function useTypeColumns(): VxeTableGridOptions['columns'] {
 
 export function useDataColumns(): VxeTableGridOptions['columns'] {
   return [
+    { type: 'checkbox', width: 44, fixed: 'left' },
     { field: 'id', title: 'ID', width: 80 },
+    {
+      field: 'typeCode',
+      title: '类型编码',
+      width: 140,
+      showOverflow: 'tooltip',
+    },
     { field: 'value', title: '字典值', width: 120 },
     { field: 'label', title: '字典标签', width: 140, showOverflow: 'tooltip' },
     { field: 'sort', title: '排序', width: 80 },

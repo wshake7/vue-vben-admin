@@ -1,6 +1,8 @@
-import { loadEnv } from 'vite';
+import process from 'node:process';
 
 import { defineConfig } from '@vben/vite-config';
+
+import { loadEnv } from 'vite';
 
 import { createProxy } from './build/vite/proxy';
 
@@ -11,7 +13,9 @@ export default defineConfig(({ mode }) => {
   const { VITE_PROXY } = env;
 
   // VITE_PROXY 格式：'[["/api/", "http://localhost:4000/api/"]]'
-  const proxyList: [string, string][] = VITE_PROXY ? JSON.parse(VITE_PROXY) : [];
+  const proxyList: [string, string][] = VITE_PROXY
+    ? JSON.parse(VITE_PROXY)
+    : [];
 
   return {
     application: {},

@@ -19,12 +19,11 @@ import {
   updateDictDataApi,
   updateDictTypeApi,
 } from '#/api/system/dict';
-
 import { useDataFormSchema, useTypeFormSchema } from '#/views/system/dict/data';
 
 interface Props {
   /** 表单类型：'type' = 字典类型 / 'data' = 字典项 */
-  kind: 'type' | 'data';
+  kind: 'data' | 'type';
   /** 双表选中态：dict-data 新建时若指定了 typeId，则锁定 typeId 字段不可改 */
   defaultTypeId?: number;
   /** 字典类型下拉选项（kind='data' 时需要） */
@@ -40,7 +39,7 @@ const emits = defineEmits<{
   (e: 'success'): void;
 }>();
 
-const formData = ref<DictType | DictData | undefined>();
+const formData = ref<DictData | DictType | undefined>();
 
 const id = ref<number>();
 
@@ -56,7 +55,7 @@ function buildSchema() {
       return {
         ...item,
         componentProps: {
-          ...(item.componentProps ?? {}),
+          ...item.componentProps,
           options: props.typeOptions,
         },
       };

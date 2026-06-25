@@ -1,5 +1,3 @@
-import { requestClient } from '#/api/request';
-
 import type {
   CreateDictDataRequest,
   CreateDictTypeRequest,
@@ -11,6 +9,8 @@ import type {
   UpdateDictDataRequest,
   UpdateDictTypeRequest,
 } from './types';
+
+import { requestClient } from '#/api/request';
 
 /* ============================================================
  * 字典类型 (dict-type)
@@ -53,6 +53,18 @@ export function deleteDictTypeApi(id: number) {
   return requestClient.delete<unknown>(`/system/dict-type/${id}`);
 }
 
+/** 批量操作字典类型 */
+export function batchDictTypeApi(body: {
+  action: 'delete' | 'disable' | 'enable';
+  ids: number[];
+}) {
+  return requestClient.post<{
+    action: string;
+    affected: number;
+    ids: number[];
+  }>('/system/dict-type/batch', body);
+}
+
 /* ============================================================
  * 字典项 (dict-data)
  * ============================================================ */
@@ -87,6 +99,18 @@ export function updateDictDataApi(
 /** 删除字典项 */
 export function deleteDictDataApi(id: number) {
   return requestClient.delete<unknown>(`/system/dict-data/${id}`);
+}
+
+/** 批量操作字典项 */
+export function batchDictDataApi(body: {
+  action: 'delete' | 'disable' | 'enable';
+  ids: number[];
+}) {
+  return requestClient.post<{
+    action: string;
+    affected: number;
+    ids: number[];
+  }>('/system/dict-data/batch', body);
 }
 
 export type * from './types';
