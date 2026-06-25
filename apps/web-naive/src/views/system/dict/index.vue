@@ -209,10 +209,6 @@ function openTypeCreate() {
 }
 
 function openEntryCreate() {
-  if (!selectedTypeId.value) {
-    message.warning('请先在左侧选择一个字典类型');
-    return;
-  }
   dataFormDrawerApi.setData({}).open();
 }
 
@@ -421,7 +417,6 @@ onMounted(async () => {
                   v-if="entrySelectedIds.size === 0"
                   type="primary"
                   size="small"
-                  :disabled="!selectedTypeId"
                   @click="openEntryCreate"
                 >
                   新建条目

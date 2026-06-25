@@ -133,6 +133,7 @@ export type ComponentType =
   | 'Select'
   | 'Space'
   | 'Switch'
+  | 'Textarea'
   | 'TimePicker'
   | 'TreeSelect'
   | 'Upload'
@@ -253,6 +254,8 @@ async function initComponentAdapter() {
     Select: withDefaultPlaceholder(NSelect, 'select'),
     Space: NSpace,
     Switch: NSwitch,
+    // naive-ui 没有独立的 Textarea 组件，复用 NInput 并默认传 type='textarea'
+    Textarea: withDefaultPlaceholder(NInput, 'input', { type: 'textarea' }),
     TimePicker: NTimePicker,
     TreeSelect: withDefaultPlaceholder(NTreeSelect, 'select'),
     Upload: NUpload,

@@ -16,6 +16,7 @@ import { useVbenForm } from '#/adapter/form';
 import {
   createDictDataApi,
   createDictTypeApi,
+  fetchAllDictTypesApi,
   updateDictDataApi,
   updateDictTypeApi,
 } from '#/api/system/dict';
@@ -43,25 +44,41 @@ const formData = ref<DictData | DictType | undefined>();
 
 const id = ref<number>();
 
+// 兜底：父组件 typeOptions 还没就绪时自己拉一次，
+// 否则 Select 拿不到匹配项，setValues 设的 typeId 显示不出来
+const fallbackTypeOptions = ref<Array<{ label: string; value: number }>>([]);
+
+const effectiveTypeOptions = computed(() =>
+  props.typeOptions.length > 0 ? props.typeOptions : fallbackTypeOptions.value,
+);
+
+async function ensureTypeOptions() {
+  if (effectiveTypeOptions.value.length > 0) return;
+  const list = await fetchAllDictTypesApi({ status: 1 });
+  fallbackTypeOptions.value = list.map((t) => ({
+    label: `${t.name}（${t.code}）`,
+    value: t.id,
+  }));
+}
+
 /**
- * 渲染 schema：kind='data' 时把 typeId 字段的 options 注入 props.typeOptions
+ * 渲染 schema：kind='data' 时把 typeId 字段的 options 注入 effectiveTypeOptions
  */
 function buildSchema() {
   const base =
     (props.kind === 'data' ? useDataFormSchema() : useTypeFormSchema()) ?? [];
   if (props.kind !== 'data') return base;
-  return base.map((item) => {
-    if (item.fieldName === 'typeId') {
-      return {
-        ...item,
-        componentProps: {
-          ...item.componentProps,
-          options: props.typeOptions,
-        },
-      };
-    }
-    return item;
-  });
+  return base.map((item) =>
+    item.fieldName === 'typeId'
+      ? {
+          ...item,
+          componentProps: {
+            ...item.componentProps,
+            options: effectiveTypeOptions.value,
+          },
+        }
+      : item,
+  );
 }
 
 const [Form, formApi] = useVbenForm({
@@ -117,6 +134,13 @@ const [Drawer, drawerApi] = useVbenDrawer({
         props.kind === 'type'
           ? drawerApi.getData<DictType>()
           : drawerApi.getData<DictData>();
+      // 新建模式：先确保 typeOptions 已加载，再 updateSchema 注入，
+      // 否则 Select 拿不到匹配项 typeId 回显不出来。
+      // 注意：Vben Drawer 的 getData() 默认返回 {}，setData({}) 与「未传 data」
+      // 等价；这里用 data?.id 判别「编辑/新建」，避免空对象误入编辑分支。
+      if (props.kind === 'data' && !data?.id) {
+        await ensureTypeOptions();
+      }
       formApi.resetForm();
       // 切到新 schema（kind 变化时尤其需要）
       formApi.updateSchema(buildSchema());
@@ -128,27 +152,35 @@ const [Drawer, drawerApi] = useVbenDrawer({
         id.value = undefined;
         formData.value = undefined;
       }
+      // 等 form 子项（Select）完成挂载与 schema 同步：
+      // updateSchema 是异步重建的，单次 nextTick 不足以让 Select 注册到 store，
+      // 立即 setValues 会丢。延后到下一帧再回显 typeId 等字段。
       await nextTick();
-
-      if (data) {
-        if (props.kind === 'type') {
-          const t = data as DictType;
-          formApi.setValues({ ...t, is_enabled: t.is_enabled === 1 });
-        } else {
-          const d = data as DictData;
+      setTimeout(() => {
+        if (data?.id) {
+          if (props.kind === 'type') {
+            const t = data as DictType;
+            formApi.setValues({ ...t, is_enabled: t.is_enabled === 1 });
+          } else {
+            const d = data as DictData;
+            formApi.setValues({
+              typeId: d.type_id,
+              value: d.value,
+              label: d.label,
+              sort: d.sort,
+              isDefault: d.is_default === 1,
+              is_enabled: d.is_enabled === 1,
+              remark: d.remark,
+            });
+          }
+        } else if (props.kind === 'data') {
+          // 新建字典项：默认沿用左侧选中的类型，未选则空
           formApi.setValues({
-            ...d,
-            isDefault: d.is_default === 1,
-            is_enabled: d.is_enabled === 1,
+            typeId: props.defaultTypeId ?? undefined,
+            is_enabled: true,
           });
         }
-      } else if (props.kind === 'data') {
-        // 新建字典项：优先用 defaultTypeId
-        formApi.setValues({
-          typeId: props.defaultTypeId ?? null,
-          is_enabled: true,
-        });
-      }
+      }, 0);
     }
   },
 });

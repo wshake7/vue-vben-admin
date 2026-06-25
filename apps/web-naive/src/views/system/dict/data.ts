@@ -78,7 +78,7 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
       label: '所属类型',
       rules: 'selectRequired',
       componentProps: {
-        // options 由父组件在 buildSchema 时注入
+        // options 由 form.vue 的 buildSchema 注入 localTypeOptions
         options: [] as Array<{ label: string; value: number }>,
         filterable: true,
         placeholder: '请选择类型',
