@@ -127,6 +127,7 @@ const [TypeGrid, typeGridApi] = useVbenVxeGrid<DictType>({
             pageSize: page.pageSize,
             code: formValues.code || undefined,
             name: formValues.name || undefined,
+            platform: formValues.platform || undefined,
           });
         },
       },
@@ -187,6 +188,7 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
             typeCode: formValues.typeCode || undefined,
             value: formValues.value || undefined,
             label: formValues.label || undefined,
+            platform: formValues.platform || undefined,
           });
         },
       },

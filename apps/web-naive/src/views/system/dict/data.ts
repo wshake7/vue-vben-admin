@@ -6,6 +6,19 @@ import { z } from '#/adapter/form';
 import { fetchAllDictTypesApi } from '#/api/system/dict';
 
 /* ============================================================
+ * 平台标识选项：空=通用，vue-admin / react-admin 为各前端管理端
+ * ============================================================ */
+export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '通用', value: '' },
+  { label: 'vue-admin', value: 'vue-admin' },
+  { label: 'react-admin', value: 'react-admin' },
+];
+
+/** 当前应用默认平台，用于列表默认筛选；从 Vite 环境变量读取 */
+export const DEFAULT_PLATFORM: string =
+  (import.meta.env.VITE_APP_PLATFORM as string | undefined) ?? '';
+
+/* ============================================================
  * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）
  * ============================================================ */
 function useDictTypeCodeOptions(multiple = false) {
@@ -45,6 +58,18 @@ export function useTypeFormSchema(): VbenFormProps['schema'] {
         .min(1, '请输入类型编码')
         .regex(DICT_CODE_PATTERN, '以小写字母开头，仅含字母数字下划线'),
       componentProps: { placeholder: '例如 sys_user_sex' },
+    },
+    {
+      component: 'Select',
+      fieldName: 'platform',
+      label: '平台标识',
+      help: '空=通用；非空为前端管理端',
+      defaultValue: '',
+      componentProps: {
+        options: PLATFORM_OPTIONS,
+        filterable: true,
+        placeholder: '请选择平台',
+      },
     },
     {
       component: 'Input',
@@ -134,6 +159,18 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
   return [
     { ...typeCode, fieldName: 'code', label: '类型编码' },
     { component: 'Input', fieldName: 'name', label: '类型名称' },
+    {
+      component: 'Select',
+      fieldName: 'platform',
+      label: '平台标识',
+      defaultValue: DEFAULT_PLATFORM,
+      componentProps: {
+        options: PLATFORM_OPTIONS,
+        filterable: true,
+        allowClear: true,
+        placeholder: '请选择平台',
+      },
+    },
   ];
 }
 
@@ -145,6 +182,18 @@ export function useDataSearchSchema(): VbenFormProps['schema'] {
   return [
     { ...typeCode, fieldName: 'typeCode', label: '类型编码' },
     { component: 'Input', fieldName: 'value', label: '字典值' },
+    {
+      component: 'Select',
+      fieldName: 'platform',
+      label: '平台标识',
+      defaultValue: DEFAULT_PLATFORM,
+      componentProps: {
+        options: PLATFORM_OPTIONS,
+        filterable: true,
+        allowClear: true,
+        placeholder: '请选择平台',
+      },
+    },
   ];
 }
 
@@ -158,6 +207,12 @@ export function useTypeColumns(): VxeTableGridOptions['columns'] {
     { type: 'checkbox', width: 44, fixed: 'left' },
     { field: 'id', title: 'ID', width: 80 },
     { field: 'code', title: '类型编码', width: 140, showOverflow: 'tooltip' },
+    {
+      field: 'platform',
+      title: '平台标识',
+      width: 130,
+      formatter: ({ row }: { row: DictType }) => row.platform || '通用',
+    },
     { field: 'name', title: '类型名称', width: 140, showOverflow: 'tooltip' },
     { field: 'remark', title: '备注', minWidth: 160, showOverflow: 'tooltip' },
     {
