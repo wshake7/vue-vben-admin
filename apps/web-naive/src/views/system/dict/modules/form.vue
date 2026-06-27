@@ -168,13 +168,15 @@ const [Drawer, drawerApi] = useVbenDrawer({
               value: d.value,
               label: d.label,
               sort: d.sort,
+              platform: d.platform,
               isDefault: d.is_default === 1,
               is_enabled: d.is_enabled === 1,
               remark: d.remark,
             });
           }
         } else if (props.kind === 'data') {
-          // 新建字典项：默认沿用左侧选中的类型，未选则空
+          // 新建字典项：默认沿用左侧选中的类型，未选则空；
+          // platform 字段由 schema defaultValue(DEFAULT_PLATFORM) 自动填充。
           formApi.setValues({
             typeId: props.defaultTypeId ?? undefined,
             is_enabled: true,

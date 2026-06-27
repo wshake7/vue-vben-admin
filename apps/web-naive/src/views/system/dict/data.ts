@@ -6,6 +6,28 @@ import { z } from '#/adapter/form';
 import { fetchAllDictTypesApi } from '#/api/system/dict';
 
 /* ============================================================
+ * 平台（与 schema v8 + 后端 ?platform= 对齐）
+ * ============================================================ */
+
+/** 当前前端平台标识（VITE_APP_PLATFORM）。缺省 'general'。 */
+export const DEFAULT_PLATFORM: string =
+  (import.meta.env.VITE_APP_PLATFORM as string | undefined) || 'general';
+
+/**
+ * 字典项 platform 字段的候选下拉选项。
+ * 仅展示「自己」+「通用」两项；本前端不允许选择其他平台。
+ */
+export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> = (() => {
+  const list: Array<{ label: string; value: string }> = [
+    { label: '通用', value: 'general' },
+  ];
+  if (DEFAULT_PLATFORM !== 'general') {
+    list.push({ label: DEFAULT_PLATFORM, value: DEFAULT_PLATFORM });
+  }
+  return list;
+})();
+
+/* ============================================================
  * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）
  * ============================================================ */
 function useDictTypeCodeOptions(multiple = false) {
@@ -106,6 +128,17 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
       componentProps: { placeholder: '升序排序，0 排在前' },
     },
     {
+      component: 'Select',
+      fieldName: 'platform',
+      label: '归属平台',
+      defaultValue: DEFAULT_PLATFORM,
+      componentProps: {
+        options: PLATFORM_OPTIONS,
+        filterable: false,
+        placeholder: '请选择归属平台',
+      },
+    },
+    {
       component: 'Switch',
       fieldName: 'isDefault',
       label: '是否默认',
@@ -199,6 +232,17 @@ export function useDataColumns(): VxeTableGridOptions['columns'] {
     },
     { field: 'value', title: '字典值', width: 120 },
     { field: 'label', title: '字典标签', width: 140, showOverflow: 'tooltip' },
+    {
+      cellRender: {
+        name: 'CellTag',
+        props: ({ row }: { row: DictData }) => ({
+          color: row.platform === 'general' ? 'default' : 'info',
+        }),
+      },
+      field: 'platform',
+      title: '归属平台',
+      width: 110,
+    },
     { field: 'sort', title: '排序', width: 80 },
     {
       cellRender: {

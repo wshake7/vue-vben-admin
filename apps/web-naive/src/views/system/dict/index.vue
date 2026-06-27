@@ -29,6 +29,7 @@ import {
 import {
   useDataColumns,
   useDataSearchSchema,
+  DEFAULT_PLATFORM,
   useTypeColumns,
   useTypeSearchSchema,
 } from '#/views/system/dict/data';
@@ -181,11 +182,13 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
           formValues: Record<string, any>,
         ) => {
           // typeCode 不在搜索表单里，由 entryTypeCode 提供（点击行 / 关闭按钮）。
+          // platform 由 DEFAULT_PLATFORM(VITE_APP_PLATFORM) 注入，确保后端只返回本前端可见的项。
           return await fetchDictDataListApi({
             page: page.currentPage,
             pageSize: page.pageSize,
             typeCode: entryTypeCode.value,
             value: formValues.value || undefined,
+            platform: DEFAULT_PLATFORM,
           });
         },
       },
