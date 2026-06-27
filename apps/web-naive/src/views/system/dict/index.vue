@@ -9,9 +9,11 @@ import { Page, useVbenDrawer } from '@vben/common-ui';
 import {
   NButton,
   NCard,
+  NCheckbox,
   NGrid,
   NGridItem,
   NPopconfirm,
+  NSelect,
   NSpace,
   NTag,
   useMessage,
@@ -28,6 +30,7 @@ import {
 } from '#/api/system/dict';
 import {
   DEFAULT_PLATFORM,
+  SEARCH_PLATFORM_OPTIONS,
   useDataColumns,
   useDataSearchSchema,
   useTypeColumns,
@@ -36,6 +39,12 @@ import {
 import Form from '#/views/system/dict/modules/form.vue';
 
 defineOptions({ name: 'SystemDict' });
+
+// 与 React 版 getCurrentPlatform() 一致：取当前环境的 platform，
+// 找不到时兜底为 'general'（与 VITE_APP_PLATFORM 缺失行为一致）。
+function getCurrentPlatform(): string {
+  return (import.meta.env.VITE_APP_PLATFORM as string | undefined) ?? 'general';
+}
 
 const message = useMessage();
 
@@ -286,7 +295,22 @@ onMounted(async () => {
   } catch {
     // 静默失败：drawer 打开时再尝试
   }
+
+  // includeGeneral 初始值与 React 版 initialValue={true} 对齐。
+  void entryGridApi.formApi?.setFieldValue?.('includeGeneral', true);
 });
+
+// ------------------------------------------------------------
+// #form-platform 插槽：Select + 包含通用 Checkbox 同行渲染
+// - platform 字段由 schema 接管（v-model 等价物 = value / onUpdate:value）
+// - includeGeneral 不进 schema，靠 formApi 读写，提交时 formValues.includeGeneral 仍可拿到
+// - 当 platform === 'general' 时 Checkbox 强制 disabled（与 React 版一致）
+// ------------------------------------------------------------
+const includeGeneralChecked = ref(true);
+
+function setIncludeGeneralField(value: boolean) {
+  void entryGridApi.formApi?.setFieldValue?.('includeGeneral', value);
+}
 </script>
 
 <template>
@@ -395,6 +419,47 @@ onMounted(async () => {
             </NSpace>
           </template>
           <EntryGrid table-title="字典条目列表">
+            <template
+              #form-platform="{
+                value: platformValue,
+                'onUpdate:value': onUpdatePlatform,
+              }"
+            >
+              <div
+                style="
+                  display: flex;
+                  gap: 12px;
+                  align-items: center;
+                  width: 100%;
+                "
+              >
+                <NSelect
+                  :value="platformValue ?? getCurrentPlatform()"
+                  :on-update:value="
+                    (v: string | null) => {
+                      onUpdatePlatform?.(v ?? undefined);
+                    }
+                  "
+                  :options="SEARCH_PLATFORM_OPTIONS"
+                  placeholder="请选择归属平台"
+                  clearable
+                  style="flex: 1; min-width: 0"
+                />
+                <NCheckbox
+                  :checked="includeGeneralChecked"
+                  :on-update:checked="
+                    (v: boolean) => {
+                      includeGeneralChecked = v;
+                      setIncludeGeneralField(v);
+                    }
+                  "
+                  :disabled="platformValue === 'general'"
+                  style="white-space: nowrap"
+                >
+                  通用
+                </NCheckbox>
+              </div>
+            </template>
             <template #toolbar-tools>
               <NSpace :size="8" align="center">
                 <span

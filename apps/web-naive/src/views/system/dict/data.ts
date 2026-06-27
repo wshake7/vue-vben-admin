@@ -186,7 +186,8 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
  * 字典项 列表检索 schema
  *
  * typeCode 由代码逻辑控制（点击行 / 关闭按钮），不进搜索表单。
- * platform 进搜索表单：下拉显示 3 项，includeGeneral 仅在非 general 时显示。
+ * platform 进搜索表单：下拉显示 3 项，includeGeneral 由 #form-platform 插槽
+ * 内的 Checkbox 通过 formApi 写入（不进 schema，避免占独立一行）。
  * ============================================================ */
 export function useDataSearchSchema(): VbenFormProps['schema'] {
   return [
@@ -196,10 +197,11 @@ export function useDataSearchSchema(): VbenFormProps['schema'] {
       fieldName: 'platform',
       label: '归属平台',
       defaultValue: DEFAULT_PLATFORM,
+      controlClass: 'platform-control',
       componentProps: {
         options: SEARCH_PLATFORM_OPTIONS,
         allowClear: true,
-        placeholder: '请选择归属平台',  
+        placeholder: '请选择归属平台',
       },
     },
   ];
