@@ -21,6 +21,17 @@ export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> = [
 export const PLATFORM_SEARCH_OPTIONS: Array<{ label: string; value: string }> =
   PLATFORM_OPTIONS.filter((o) => o.value !== '');
 
+/**
+ * 右表平台标识搜索下拉：包含「通用」选项。
+ * 用途：点行选中 platform=''（通用）时，下拉需要能把 value='' 渲染成"通用"
+ * 标签，否则选中后字段显示为空白。
+ * 后端语义：选「通用」时 value=''，前端透传 platform=''，后端把它识别为「仅通用」。
+ */
+export const PLATFORM_ENTRY_SEARCH_OPTIONS: Array<{
+  label: string;
+  value: string;
+}> = PLATFORM_OPTIONS;
+
 /** 当前应用默认平台，用于列表默认筛选；从 Vite 环境变量读取 */
 export const DEFAULT_PLATFORM: string =
   (import.meta.env.VITE_APP_PLATFORM as string | undefined) ?? '';
@@ -184,9 +195,9 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
 /* ============================================================
  * 字典项 列表检索 schema
  *
- * 参数 isPlatformLockedGetter：当左表已筛选「平台标识」时返回 true，
- * 右表 platform 字段被禁用并跟随左表值。用 getter 让 schema 的 componentProps
- * 可以在响应式状态变化时拿到最新值。
+ * 参数 isPlatformLockedGetter：当左表已点行时返回 true，
+ * 右表 platform 字段被禁用并跟随选中行 platform 值。用 getter 让 schema
+ * 的 componentProps 可以在响应式状态变化时拿到最新值。
  * ============================================================ */
 export function useDataSearchSchema(
   isPlatformLockedGetter: () => boolean = () => false,
@@ -200,7 +211,8 @@ export function useDataSearchSchema(
       label: '平台标识',
       defaultValue: DEFAULT_PLATFORM,
       componentProps: () => ({
-        options: PLATFORM_SEARCH_OPTIONS,
+        // 右表：包含「通用」选项，使选中通用类型时能正确显示「通用」标签
+        options: PLATFORM_ENTRY_SEARCH_OPTIONS,
         filterable: true,
         allowClear: true,
         placeholder: '请选择平台',
