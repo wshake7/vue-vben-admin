@@ -27,9 +27,9 @@ import {
   fetchDictTypeListApi,
 } from '#/api/system/dict';
 import {
+  DEFAULT_PLATFORM,
   useDataColumns,
   useDataSearchSchema,
-  DEFAULT_PLATFORM,
   useTypeColumns,
   useTypeSearchSchema,
 } from '#/views/system/dict/data';

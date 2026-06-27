@@ -17,15 +17,16 @@ export const DEFAULT_PLATFORM: string =
  * 字典项 platform 字段的候选下拉选项。
  * 仅展示「自己」+「通用」两项；本前端不允许选择其他平台。
  */
-export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> = (() => {
-  const list: Array<{ label: string; value: string }> = [
-    { label: '通用', value: 'general' },
-  ];
-  if (DEFAULT_PLATFORM !== 'general') {
-    list.push({ label: DEFAULT_PLATFORM, value: DEFAULT_PLATFORM });
-  }
-  return list;
-})();
+export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> =
+  (() => {
+    const list: Array<{ label: string; value: string }> = [
+      { label: '通用', value: 'general' },
+    ];
+    if (DEFAULT_PLATFORM !== 'general') {
+      list.push({ label: DEFAULT_PLATFORM, value: DEFAULT_PLATFORM });
+    }
+    return list;
+  })();
 
 /* ============================================================
  * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）

@@ -45,7 +45,7 @@ pre-commit:
   parallel: true
   commands:
     lint:
-      run: pnpm lint
+      run: pnpm format
     checkType:
       run: pnpm check:type
 
