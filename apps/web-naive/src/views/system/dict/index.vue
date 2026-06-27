@@ -178,6 +178,22 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
     collapsed: false,
     schema: useDataSearchSchema(),
     showCollapseButton: false,
+    // 接管 form 重置：把右侧插槽里那个独立维护的 `includeGeneralChecked` ref
+    // 拉回 true 并写回 form 字段。否则重置后 checkbox 视觉上仍然为空（ref 没
+    // 跟着 form 一起 reset），跟用户预期「通用默认勾上」不一致。
+    handleReset: async () => {
+      includeGeneralChecked.value = true;
+      await entryGridApi.formApi?.setFieldValue?.('includeGeneral', true);
+      await entryGridApi.formApi?.resetForm?.();
+      // 把 reset 后的 formValues 同步给 ajax.query：vxe-grid 的 ajax 通过
+      // extendProxyOptions 桥接到 formApi.getLatestSubmissionValues()，而不是
+      // 每次现读 getValues()。如果不写 latest snapshot，ajax.query 拿到的还是
+      // reset 之前的「不含通用」的旧值，结果就是「reset 后 checkbox 勾上了但
+      // 列表没刷新」。
+      const formValues = (await entryGridApi.formApi?.getValues?.()) ?? {};
+      entryGridApi.formApi?.setLatestSubmissionValues?.(formValues);
+      await entryGridApi.reload();
+    },
   },
   gridEvents: entryGridEvents,
   gridOptions: {
@@ -295,16 +311,17 @@ onMounted(async () => {
   } catch {
     // 静默失败：drawer 打开时再尝试
   }
-
-  // includeGeneral 初始值与 React 版 initialValue={true} 对齐。
-  void entryGridApi.formApi?.setFieldValue?.('includeGeneral', true);
 });
 
 // ------------------------------------------------------------
 // #form-platform 插槽：Select + 包含通用 Checkbox 同行渲染
 // - platform 字段由 schema 接管（v-model 等价物 = value / onUpdate:value）
-// - includeGeneral 不进 schema，靠 formApi 读写，提交时 formValues.includeGeneral 仍可拿到
-// - 当 platform === 'general' 时 Checkbox 强制 disabled（与 React 版一致）
+// - includeGeneral 在 schema 里以「不渲染的隐藏字段」形式注册（useDataSearchSchema
+//   里的 dependencies.if: () => false），所以 defaultValue: true 在 form init 时就
+//   落进 form.values；不需要再在 onMounted 里 setFieldValue 兜底。
+// - 插槽里的 Checkbox 仍通过 formApi.setFieldValue 写回，与 schema 里那个隐藏
+//   field 共享同一个 form 字段；提交时 formValues.includeGeneral === true。
+// - 当 platform === 'general' 时 Checkbox 强制 disabled（与 React 版一致）。
 // ------------------------------------------------------------
 const includeGeneralChecked = ref(true);
 

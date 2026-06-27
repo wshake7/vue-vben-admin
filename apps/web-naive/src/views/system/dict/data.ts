@@ -186,8 +186,14 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
  * 字典项 列表检索 schema
  *
  * typeCode 由代码逻辑控制（点击行 / 关闭按钮），不进搜索表单。
- * platform 进搜索表单：下拉显示 3 项，includeGeneral 由 #form-platform 插槽
- * 内的 Checkbox 通过 formApi 写入（不进 schema，避免占独立一行）。
+ * platform 进搜索表单：下拉显示 3 项，UI 与「包含通用」checkbox 同行
+ * （#form-platform 插槽内联渲染）。
+ * includeGeneral：作为独立 schema 字段注册（不依赖插槽的 formApi.setFieldValue
+ * 兜底），defaultValue=true 让首次 ajax.query 一定带上 includeGeneral=true。
+ *   - show: false 让字段在搜索栏里隐藏（实际 UI 在 platform 插槽内）；
+ *   - 这里 *不* 通过 component: 'Switch' 渲染，避免再占一个 form item 视觉位，
+ *     用一个最小占位组件 + show:false，让 form 仍能感知到字段并把 defaultValue
+ *     落到 form.values 里。
  * ============================================================ */
 export function useDataSearchSchema(): VbenFormProps['schema'] {
   return [
@@ -202,6 +208,23 @@ export function useDataSearchSchema(): VbenFormProps['schema'] {
         options: SEARCH_PLATFORM_OPTIONS,
         allowClear: true,
         placeholder: '请选择归属平台',
+      },
+    },
+    {
+      // 关键：必须作为 schema 字段注册进 form，defaultValue 才会被 vben form
+      // 落进 form.values（之前在 onMounted 里 setFieldValue 的兜底是 no-op，
+      // 因为 form 里根本没有 includeGeneral 这个 field）。
+      // dependencies.show: false 用 v-show 把 FormItem 隐藏（FormField 仍然挂载，
+      // vee-validate 才能感知到字段；不能直接用 hide: true / if: false，否则
+      // v-if 摘掉 FormField，field 不会被 useField 注册，form.values 里就没这个
+      // 字段了）。triggerFields 不能为空数组（useDependencies 在 triggerFields
+      // 为空时直接 return，连带 show 都不会求值），所以绑一个 platform 字段。
+      component: 'Switch',
+      fieldName: 'includeGeneral',
+      defaultValue: true,
+      dependencies: {
+        triggerFields: ['platform'],
+        show: false,
       },
     },
   ];
