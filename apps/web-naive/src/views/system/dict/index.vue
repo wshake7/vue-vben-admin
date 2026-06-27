@@ -2,7 +2,7 @@
 import type { VxeGridListeners } from '#/adapter/vxe-table';
 import type { DictData, DictType } from '#/api/system/dict';
 
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 
@@ -82,12 +82,10 @@ const typeColumns: ReturnType<typeof useTypeColumns> = useTypeColumns();
 const typeGridEvents: VxeGridListeners<DictType> = {
   currentRowChange: ({ row }) => {
     if (!row) return;
-    // 选中左表行后，把右表的 typeCode（由 entryTypeCode 持有）同步为该类型编码；
-    // 右表 platform 字段 disable，并跟随为该行 platform。
+    // 选中左表行后，把右表的 typeCode（由 entryTypeCode 持有）同步为该类型编码。
     entryTypeCode.value = row.code;
     selectedTypeId.value = row.id;
     selectedType.value = row;
-    entryGridApi.formApi?.setValues?.({ platform: row.platform || '' });
     entryGridApi.reload();
   },
   checkboxChange: ({ row, checked }) => {
@@ -123,14 +121,11 @@ const [TypeGrid, typeGridApi] = useVbenVxeGrid<DictType>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
-          // platform 透传（含空串 ''）：用 '' 显式表示「仅通用」，
-          // 不能被 || undefined 抹掉，否则后端会走「不过滤」分支。
           return await fetchDictTypeListApi({
             page: page.currentPage,
             pageSize: page.pageSize,
             code: formValues.code || undefined,
             name: formValues.name || undefined,
-            platform: formValues.platform,
           });
         },
       },
@@ -171,8 +166,7 @@ const entryGridEvents: VxeGridListeners<DictData> = {
 const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
   formOptions: {
     collapsed: false,
-    // 右表 platform 字段需要响应左表的锁定状态：通过 getter 在 componentProps 中读取
-    schema: useDataSearchSchema(() => selectedTypeId.value !== null),
+    schema: useDataSearchSchema(),
     showCollapseButton: false,
   },
   gridEvents: entryGridEvents,
@@ -187,13 +181,11 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
           formValues: Record<string, any>,
         ) => {
           // typeCode 不在搜索表单里，由 entryTypeCode 提供（点击行 / 关闭按钮）。
-          // platform 透传（含空串 ''）：用 '' 显式表示「仅通用」。
           return await fetchDictDataListApi({
             page: page.currentPage,
             pageSize: page.pageSize,
             typeCode: entryTypeCode.value,
             value: formValues.value || undefined,
-            platform: formValues.platform,
           });
         },
       },
@@ -212,18 +204,6 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
 // 行为
 // ============================================================
 
-/**
- * 左表点行 / 关闭 Tag 时同步右表 platform 字段的禁用状态：
- * 重新生成 schema 并 updateSchema，让 componentProps 的 getter 拿到最新 disabled 值。
- * reload 由 currentRowChange 自己处理。
- */
-watch(selectedTypeId, () => {
-  const schema = useDataSearchSchema(() => selectedTypeId.value !== null);
-  if (schema) {
-    entryGridApi.formApi?.updateSchema?.(schema);
-  }
-});
-
 function openTypeCreate() {
   typeFormDrawerApi.setData({}).open();
 }
@@ -236,15 +216,12 @@ function openEntryCreate() {
  * 清除右表的「点击行筛选」状态：
  * - 清空 typeCode ref
  * - 清空 selectedType / selectedTypeId（Tag 消失，标题变回「字典数据」）
- * - 清空「平台标识」搜索字段（close Tag 是它唯一的清空入口）
  * - 重新拉一次右表数据，typeCode 变 undefined 后右表回到「全部」
  */
 function clearEntrySelection() {
   entryTypeCode.value = undefined;
   selectedTypeId.value = null;
   selectedType.value = null;
-  // 清空右表「平台标识」字段；其它搜索字段保留用户输入
-  entryGridApi.formApi?.setValues?.({ platform: undefined });
   entryGridApi.reload();
 }
 

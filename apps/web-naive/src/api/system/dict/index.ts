@@ -30,7 +30,6 @@ export function fetchDictTypeListApi(params: DictTypeQuery = {}) {
 export function fetchAllDictTypesApi(params?: {
   code?: string | string[];
   name?: string;
-  platform?: string;
   status?: 0 | 1;
 }) {
   return requestClient.get<DictType[]>('/system/dict-type/all', {
