@@ -182,13 +182,15 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
           formValues: Record<string, any>,
         ) => {
           // typeCode 不在搜索表单里，由 entryTypeCode 提供（点击行 / 关闭按钮）。
-          // platform 由 DEFAULT_PLATFORM(VITE_APP_PLATFORM) 注入，确保后端只返回本前端可见的项。
+          // platform：表单未选时落到 DEFAULT_PLATFORM（=VITE_APP_PLATFORM）。
+          // includeGeneral：复选框布尔值；后端 platform=general 时忽略。
           return await fetchDictDataListApi({
             page: page.currentPage,
             pageSize: page.pageSize,
             typeCode: entryTypeCode.value,
             value: formValues.value || undefined,
-            platform: DEFAULT_PLATFORM,
+            platform: formValues.platform || DEFAULT_PLATFORM,
+            includeGeneral: formValues.includeGeneral === true,
           });
         },
       },

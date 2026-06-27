@@ -26,6 +26,7 @@
     "platformGeneral": "通用",
     "platformVueAdmin": "Vue Admin",
     "platformReactAdmin": "React Admin",
+    "includeGeneral": "包含通用",
     "yes": "是",
     "no": "否",
     "editType": "编辑字典类型",

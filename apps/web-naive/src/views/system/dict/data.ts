@@ -28,6 +28,16 @@ export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> =
     return list;
   })();
 
+/**
+ * 字典项 platform 字段的搜索下拉候选（搜索场景不限制「自己」，展示全部 3 项）。
+ * 与 PLATFORM_OPTIONS（表单 Select）区分：搜索需要看全 platform；表单只允许维护自己。
+ */
+export const SEARCH_PLATFORM_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '通用', value: 'general' },
+  { label: 'React Admin', value: 'react-admin' },
+  { label: 'Vue Admin', value: 'vue-admin' },
+];
+
 /* ============================================================
  * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）
  * ============================================================ */
@@ -175,9 +185,35 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
  * 字典项 列表检索 schema
  *
  * typeCode 由代码逻辑控制（点击行 / 关闭按钮），不进搜索表单。
+ * platform 进搜索表单：下拉显示 3 项，includeGeneral 仅在非 general 时显示。
  * ============================================================ */
 export function useDataSearchSchema(): VbenFormProps['schema'] {
-  return [{ component: 'Input', fieldName: 'value', label: '字典值' }];
+  return [
+    {
+      component: 'Select',
+      fieldName: 'platform',
+      label: '归属平台',
+      defaultValue: DEFAULT_PLATFORM,
+      componentProps: {
+        options: SEARCH_PLATFORM_OPTIONS,
+        allowClear: true,
+        placeholder: '请选择归属平台',
+      },
+    },
+    {
+      component: 'Switch',
+      fieldName: 'includeGeneral',
+      label: '包含通用',
+      defaultValue: false,
+      // 选 general 时整项视觉消失（CSS 隐藏，与用户「消失」意图一致）。
+      // VbenForm schema dependencies.show 触发 schema 重算。
+      dependencies: {
+        triggerFields: ['platform'],
+        show: (values: { platform?: string }) => values.platform !== 'general',
+      },
+    },
+    { component: 'Input', fieldName: 'value', label: '字典值' },
+  ];
 }
 
 /* ============================================================

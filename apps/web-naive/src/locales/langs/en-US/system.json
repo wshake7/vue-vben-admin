@@ -26,6 +26,7 @@
     "platformGeneral": "General",
     "platformVueAdmin": "Vue Admin",
     "platformReactAdmin": "React Admin",
+    "includeGeneral": "Include general",
     "yes": "Yes",
     "no": "No",
     "editType": "Edit Dictionary Type",
