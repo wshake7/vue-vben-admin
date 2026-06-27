@@ -2,7 +2,7 @@
 import type { VxeGridListeners } from '#/adapter/vxe-table';
 import type { DictData, DictType } from '#/api/system/dict';
 
-import { computed, onMounted, ref, toRaw } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 
@@ -13,6 +13,7 @@ import {
   NGridItem,
   NPopconfirm,
   NSpace,
+  NTag,
   useMessage,
 } from 'naive-ui';
 
@@ -51,6 +52,13 @@ const selectedTypeId = ref<null | number>(null);
 const selectedType = ref<DictType | null>(null);
 const typeOptions = ref<Array<{ label: string; value: number }>>([]);
 
+// 右表当前 typeCode：由左表点击行 / 关闭按钮写入，ajax.query 直接读这个 ref。
+// typeCode 不再走表单：搜索栏也不显示该字段，逻辑完全在代码里完成。
+const entryTypeCode = ref<string | undefined>(undefined);
+
+// 左表「平台标识」筛选值；右表 platform 字段跟随并被锁定
+const typePlatformFilter = ref<string | undefined>(undefined);
+
 // 多选状态（左右两表各自独立）
 const typeSelectedIds = ref<Set<number>>(new Set());
 const entrySelectedIds = ref<Set<number>>(new Set());
@@ -75,19 +83,14 @@ const [DataFormDrawer, dataFormDrawerApi] = useVbenDrawer({
 const typeColumns: ReturnType<typeof useTypeColumns> = useTypeColumns();
 
 const typeGridEvents: VxeGridListeners<DictType> = {
-  currentRowChange: async ({ row }) => {
+  currentRowChange: ({ row }) => {
     if (!row) return;
-    // 1. 把右表搜索框的「类型编码」同步为该类型编码
-    // 2. 显式更新 vben-form 的「最近一次提交值」：vxe-grid 的 proxy 是从那里读取表单值，
-    //    直接 setFieldValue 不会触发它，必须手动 setLatestSubmissionValues，
-    //    否则点击行后右表不会按新编码筛选。
-    // 3. 调用 query 并显式传入 formValues，避免任何缓存导致的旧值。
-    await entryGridApi.formApi.setFieldValue('typeCode', row.code);
-    const formValues = toRaw(await entryGridApi.formApi.getValues());
-    entryGridApi.formApi.setLatestSubmissionValues(formValues);
+    // 选中左表行后，把右表的 typeCode（由 entryTypeCode 持有）同步为该类型编码，
+    // 并重新拉右表数据。
+    entryTypeCode.value = row.code;
     selectedTypeId.value = row.id;
     selectedType.value = row;
-    entryGridApi.query(formValues);
+    entryGridApi.reload();
   },
   checkboxChange: ({ row, checked }) => {
     if (!row) return;
@@ -122,6 +125,7 @@ const [TypeGrid, typeGridApi] = useVbenVxeGrid<DictType>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
+          typePlatformFilter.value = formValues.platform || undefined;
           return await fetchDictTypeListApi({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -168,7 +172,8 @@ const entryGridEvents: VxeGridListeners<DictData> = {
 const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
   formOptions: {
     collapsed: false,
-    schema: useDataSearchSchema(),
+    // 右表 platform 字段需要响应左表的锁定状态：通过 getter 在 componentProps 中读取
+    schema: useDataSearchSchema(() => typePlatformFilter.value !== undefined),
     showCollapseButton: false,
   },
   gridEvents: entryGridEvents,
@@ -182,12 +187,12 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
+          // typeCode 不在搜索表单里，由 entryTypeCode 提供（点击行 / 关闭按钮）。
           return await fetchDictDataListApi({
             page: page.currentPage,
             pageSize: page.pageSize,
-            typeCode: formValues.typeCode || undefined,
+            typeCode: entryTypeCode.value,
             value: formValues.value || undefined,
-            label: formValues.label || undefined,
             platform: formValues.platform || undefined,
           });
         },
@@ -206,6 +211,29 @@ const [EntryGrid, entryGridApi] = useVbenVxeGrid<DictData>({
 // ============================================================
 // 行为
 // ============================================================
+
+/**
+ * 左表「平台标识」变化时同步右表：
+ * - 重建右表 form schema，让 componentProps 的 getter 取到最新的 disabled 值；
+ * - 把右表 platform 字段值同步为左表值（close Tag 才是清空它的唯一入口）；
+ * - 重新拉取右表数据，确保后端按新 platform 过滤。
+ */
+watch(typePlatformFilter, (newVal) => {
+  // 1) 推一份新 schema 给右表，让 platform 字段的 disabled 立刻反映左表状态
+  const schema = useDataSearchSchema(
+    () => typePlatformFilter.value !== undefined,
+  );
+  if (schema) {
+    entryGridApi.formApi?.updateSchema?.(schema);
+  }
+  // 2) 同步值：有值则跟随左表；左表清空则保持右表原值（close Tag 单独负责清空）
+  if (newVal !== undefined) {
+    entryGridApi.formApi?.setValues?.({ platform: newVal });
+  }
+  // 3) 触发右表查询
+  entryGridApi.reload();
+});
+
 function openTypeCreate() {
   typeFormDrawerApi.setData({}).open();
 }
@@ -214,10 +242,21 @@ function openEntryCreate() {
   dataFormDrawerApi.setData({}).open();
 }
 
-const rightTitle = computed(() => {
-  if (!selectedType.value) return '字典数据';
-  return `字典数据：${selectedType.value.name}（${selectedType.value.code}）`;
-});
+/**
+ * 清除右表的「点击行筛选」状态：
+ * - 清空 typeCode ref
+ * - 清空 selectedType / selectedTypeId（Tag 消失，标题变回「字典数据」）
+ * - 清空「平台标识」搜索字段（close Tag 是它唯一的清空入口）
+ * - 重新拉一次右表数据，typeCode 变 undefined 后右表回到「全部」
+ */
+function clearEntrySelection() {
+  entryTypeCode.value = undefined;
+  selectedTypeId.value = null;
+  selectedType.value = null;
+  // 清空右表「平台标识」字段；其它搜索字段保留用户输入
+  entryGridApi.formApi?.setValues?.({ platform: undefined });
+  entryGridApi.reload();
+}
 
 /* ============================================================
  * 批量操作
@@ -369,7 +408,20 @@ onMounted(async () => {
       </NGridItem>
 
       <NGridItem>
-        <NCard :title="rightTitle">
+        <NCard>
+          <template #header>
+            <NSpace align="center" :size="8">
+              <span>字典数据</span>
+              <NTag
+                v-if="selectedType"
+                closable
+                :bordered="false"
+                @close="clearEntrySelection"
+              >
+                {{ selectedType.name }}（{{ selectedType.code }}）
+              </NTag>
+            </NSpace>
+          </template>
           <EntryGrid table-title="字典条目列表">
             <template #toolbar-tools>
               <NSpace :size="8" align="center">

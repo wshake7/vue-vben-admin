@@ -14,6 +14,13 @@ export const PLATFORM_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'react-admin', value: 'react-admin' },
 ];
 
+/**
+ * 搜索下拉用：不含「通用」选项。
+ * 编辑表单仍然使用 PLATFORM_OPTIONS（创建/编辑通用类型仍需此选项）。
+ */
+export const PLATFORM_SEARCH_OPTIONS: Array<{ label: string; value: string }> =
+  PLATFORM_OPTIONS.filter((o) => o.value !== '');
+
 /** 当前应用默认平台，用于列表默认筛选；从 Vite 环境变量读取 */
 export const DEFAULT_PLATFORM: string =
   (import.meta.env.VITE_APP_PLATFORM as string | undefined) ?? '';
@@ -165,7 +172,7 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
       label: '平台标识',
       defaultValue: DEFAULT_PLATFORM,
       componentProps: {
-        options: PLATFORM_OPTIONS,
+        options: PLATFORM_SEARCH_OPTIONS,
         filterable: true,
         allowClear: true,
         placeholder: '请选择平台',
@@ -176,23 +183,29 @@ export function useTypeSearchSchema(): VbenFormProps['schema'] {
 
 /* ============================================================
  * 字典项 列表检索 schema
+ *
+ * 参数 isPlatformLockedGetter：当左表已筛选「平台标识」时返回 true，
+ * 右表 platform 字段被禁用并跟随左表值。用 getter 让 schema 的 componentProps
+ * 可以在响应式状态变化时拿到最新值。
  * ============================================================ */
-export function useDataSearchSchema(): VbenFormProps['schema'] {
-  const typeCode = useDictTypeCodeOptions();
+export function useDataSearchSchema(
+  isPlatformLockedGetter: () => boolean = () => false,
+): VbenFormProps['schema'] {
+  // typeCode 由代码逻辑控制（点击行 / 关闭按钮），不进搜索表单。
   return [
-    { ...typeCode, fieldName: 'typeCode', label: '类型编码' },
     { component: 'Input', fieldName: 'value', label: '字典值' },
     {
       component: 'Select',
       fieldName: 'platform',
       label: '平台标识',
       defaultValue: DEFAULT_PLATFORM,
-      componentProps: {
-        options: PLATFORM_OPTIONS,
+      componentProps: () => ({
+        options: PLATFORM_SEARCH_OPTIONS,
         filterable: true,
         allowClear: true,
         placeholder: '请选择平台',
-      },
+        disabled: isPlatformLockedGetter(),
+      }),
     },
   ];
 }
