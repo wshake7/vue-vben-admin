@@ -18,10 +18,7 @@ class StorageManager {
   private prefix: string;
   private warnedEmptyPrefix = false;
 
-  constructor({
-    driver,
-    prefix = '',
-  }: StorageManagerOptions = {}) {
+  constructor({ driver, prefix = '' }: StorageManagerOptions = {}) {
     this.driver = driver || this.createDefaultDriver();
     this.prefix = prefix;
   }

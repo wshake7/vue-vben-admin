@@ -44,10 +44,18 @@
 pre-commit:
   parallel: true
   commands:
+    # 只做格式检查（pnpm lint = vsh lint，不写文件），不跑 pnpm format。
+    # 避免 pre-commit 改文件后产生 unstaged 改动，导致 commit 后又看到一堆"新修改"。
+    # 真要格式化请开发者手动 `pnpm format` 后再 add/commit。
     lint:
-      run: pnpm format
+      run: pnpm lint
     checkType:
       run: pnpm check:type
+
+pre-push:
+  commands:
+    lint:
+      run: pnpm format
 
 post-merge:
   commands:
