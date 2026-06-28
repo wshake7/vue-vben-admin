@@ -39,6 +39,99 @@ export const SEARCH_PLATFORM_OPTIONS: Array<{ label: string; value: string }> =
     { label: 'Vue Admin', value: 'vue-admin' },
   ];
 
+/**
+ * 预设样式标识（与 schema v9 + mock ALLOWED_TAG_TYPES 对齐）。
+ * 用于「字典项新增/编辑」抽屉的「预设样式」Select 选项，以及列表 CellTag 的 color 映射。
+ * default 表示无样式；其余 16 项与 antd Tag preset colors 一一对应。
+ */
+export const TAG_TYPE_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '默认', value: 'default' },
+  { label: '主要', value: 'primary' },
+  { label: '成功', value: 'success' },
+  { label: '警告', value: 'warning' },
+  { label: '危险', value: 'error' },
+  { label: '进行中', value: 'processing' },
+  { label: '洋红', value: 'magenta' },
+  { label: '红色', value: 'red' },
+  { label: '火山', value: 'volcano' },
+  { label: '橙色', value: 'orange' },
+  { label: '金色', value: 'gold' },
+  { label: '青柠', value: 'lime' },
+  { label: '绿色', value: 'green' },
+  { label: '青色', value: 'cyan' },
+  { label: '蓝色', value: 'blue' },
+  { label: '极客蓝', value: 'geekblue' },
+  { label: '紫色', value: 'purple' },
+];
+
+/**
+ * tag_type → naive-ui NTag type 映射。
+ * NTag 接受 'default' | 'primary' | 'success' | 'info' | 'warning' | 'error'，
+ * 无 'danger'。其余 antd 颜色按语义近似归类，让列表 CellTag 与预览保持一致视觉。
+ *
+ * @deprecated 自 06-28-dict-data-preset-style-by-platform 任务起被
+ * `NAIVE_TAG_TYPE_SET` 替代。新逻辑只在 Naive UI NTag 白名单内直传 tag_type，
+ * 不再做"多对一压扁"。保留导出仅作兼容旧引用；下个迭代会移除。
+ */
+export const TAG_TYPE_TO_EL_TYPE: Record<
+  string,
+  'default' | 'error' | 'info' | 'primary' | 'success' | 'warning'
+> = {
+  default: 'default',
+  primary: 'primary',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+  processing: 'info',
+  magenta: 'error',
+  red: 'error',
+  volcano: 'error',
+  orange: 'warning',
+  gold: 'warning',
+  lime: 'success',
+  green: 'success',
+  cyan: 'info',
+  blue: 'primary',
+  geekblue: 'primary',
+  purple: 'info',
+};
+
+/**
+ * Naive UI NTag 原生支持的 6 个 type（与 NTag type 字符串一一对齐）。
+ * 「预设样式」下拉仅展示这 6 项，与 react-admin 的状态色（primary/success/
+ * warning/error/processing）收敛为同一组语义色，避免"多对一压扁"导致的视觉冲突。
+ */
+export const NAIVE_TAG_TYPE_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '默认', value: 'default' },
+  { label: '主要', value: 'primary' },
+  { label: '信息', value: 'info' },
+  { label: '成功', value: 'success' },
+  { label: '警告', value: 'warning' },
+  { label: '危险', value: 'error' },
+];
+
+/**
+ * Naive UI 白名单集合（6 项）。判定规则：tag_type ∈ 该集合 → 列表渲染 NTag；
+ * 否则按纯 label 文本渲染（legacy 颜色预设如 magenta / processing 等）。
+ */
+export const NAIVE_TAG_TYPE_SET: Set<string> = new Set(
+  NAIVE_TAG_TYPE_OPTIONS.map((o) => o.value),
+);
+
+/**
+ * 按平台返回预设样式下拉选项。
+ * - platform === 'general'（通用）→ 返回 []，开关被 disable、不展示下拉
+ * - 其他（自己 / undefined）→ 返回 6 项 NTag 原生 type（与 NAIVE_TAG_TYPE_OPTIONS 等价）
+ */
+export function PLATFORM_TAG_TYPE_OPTIONS(
+  platform: string | undefined,
+): Array<{ label: string; value: string }> {
+  if (platform === 'general') return [];
+  return NAIVE_TAG_TYPE_OPTIONS;
+}
+
+export type TagType = (typeof NAIVE_TAG_TYPE_OPTIONS)[number]['value'];
+
 /* ============================================================
  * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）
  * ============================================================ */
@@ -103,14 +196,36 @@ export function useTypeFormSchema(): VbenFormProps['schema'] {
 
 /* ============================================================
  * 字典项 form schema（抽屉内表单）
+ *
+ * 布局策略（对齐 react-admin 三段分组）：
+ *   1. wrapperClass = grid-cols-2 → 大屏两列网格
+ *   2. 每个分组前用一个 'Divider' 字段（fieldName=_section_*）跨满两列
+ *   3. 跨列字段（所属类型 / 备注 / 预览）formItemClass='col-span-2'
+ *   4. 两列并排字段自然成对（字典值+字典标签 / 排序+归属平台 / 是否默认+启用）
+ *
+ * usePresetStyle：默认开；编辑时回显由 row.tag_type 决定（既非空又非 'default' → 开）。
+ * tag_type：预设样式标识；usePresetStyle=false 时强制 ''（列表按纯 label 文本渲染）；
+ *           usePresetStyle=true 时沿用 schema 默认值 'primary'（"主要"）。
+ * 预览：form.vue 模板里通过 `<template #tag_preview>` 注入，schema 中
+ *       tag_preview 占位字段（Divider + col-span-2）只承担"挂载点"和
+ *       dependencies.show 显隐控制；slot 完全替换默认渲染。
  * ============================================================ */
 export function useDataFormSchema(): VbenFormProps['schema'] {
   return [
+    // === 基础信息 ===
+    {
+      // 视觉分组标题（纯展示，提交时丢弃 _section_* 字段）
+      component: 'Divider',
+      fieldName: '_section_basic',
+      formItemClass: 'col-span-2 mb-0',
+      componentProps: { title: '基础信息', titlePlacement: 'left' },
+    },
     {
       component: 'Select',
       fieldName: 'typeId',
       label: '所属类型',
       rules: 'selectRequired',
+      formItemClass: 'col-span-2',
       componentProps: {
         // options 由 form.vue 的 buildSchema 注入 localTypeOptions
         options: [] as Array<{ label: string; value: number }>,
@@ -131,6 +246,58 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
       label: '字典标签',
       rules: z.string().min(1, '请输入字典标签').max(128, '最长 128 字符'),
       componentProps: { placeholder: '例如 是 / 否 / 启用' },
+    },
+
+    // === 样式设置 ===
+    {
+      component: 'Divider',
+      fieldName: '_section_style',
+      formItemClass: 'col-span-2 mb-0',
+      componentProps: { title: '样式设置', titlePlacement: 'left' },
+    },
+    {
+      component: 'Switch',
+      fieldName: 'usePresetStyle',
+      label: '开启预设样式',
+      defaultValue: true,
+    },
+    {
+      // 关键：依赖 usePresetStyle 字段，关闭时整行隐藏（避免视觉残留）。
+      // 下拉 options 收敛到 Naive UI NTag 原生支持的 6 项（NAIVE_TAG_TYPE_OPTIONS）；
+      // 与 PRD 行为契约表一致。runtime form 走 form.vue 手写 reactive model，
+      // schema 仅作 reference；这里静态导出保证 schema 编译通过。
+      component: 'Select',
+      fieldName: 'tag_type',
+      label: '预设样式',
+      defaultValue: 'primary',
+      dependencies: {
+        triggerFields: ['usePresetStyle'],
+        show: (values: Record<string, unknown>) =>
+          values.usePresetStyle !== false,
+      },
+      componentProps: {
+        options: NAIVE_TAG_TYPE_OPTIONS,
+        filterable: false,
+        placeholder: '请选择预设样式',
+      },
+    },
+    {
+      // 实时预览占位字段：横跨整行（col-span-2），置于「开启预设样式 / 预设样式」下方；
+      // 始终可见，由 form.vue 模板里 <template #tag_preview> 内部根据 previewUsePreset
+      // 切换「彩色 NTag / 纯文本」（对齐 react-admin 的"关闭时降级为纯文本"）。
+      // 占位字段本身不注册到 form.values，提交逻辑无需过滤。
+      component: 'Divider',
+      fieldName: 'tag_preview',
+      hideLabel: true,
+      formItemClass: 'col-span-2',
+    },
+
+    // === 其他属性 ===
+    {
+      component: 'Divider',
+      fieldName: '_section_other',
+      formItemClass: 'col-span-2 mb-0',
+      componentProps: { title: '其他属性', titlePlacement: 'left' },
     },
     {
       component: 'InputNumber',
@@ -166,10 +333,30 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
+      formItemClass: 'col-span-2',
       componentProps: { placeholder: '选填', rows: 3 },
     },
   ];
 }
+
+/**
+ * 字典项表单的全局配置（两列布局）。在 form.vue 的 useVbenForm 中传入。
+ */
+export const DATA_FORM_COMMON_CONFIG: VbenFormProps['commonConfig'] = {
+  componentProps: {
+    class: 'w-full',
+  },
+};
+
+/**
+ * 字典项表单的 wrapperClass（两列网格）。
+ *
+ * 抽屉宽度约 640px，2 列网格刚好让「字典值+字典标签」「排序+平台」「是否默认+启用」
+ * 配对同行（对齐 react-admin）。样式设置段额外新增 `tag_preview` 字段横跨整行
+ * （form.vue 模板里通过 `<template #tag_preview>` 注入 NTag 预览），让 preview
+ * 视觉上紧贴预设样式下拉，与 react-admin 的"三列同行"语义一致。
+ */
+export const DATA_FORM_WRAPPER_CLASS = 'grid-cols-1 md:grid-cols-2';
 
 /* ============================================================
  * 字典类型 列表检索 schema
@@ -287,7 +474,13 @@ export function useDataColumns(): VxeTableGridOptions['columns'] {
       cellRender: {
         name: 'CellTag',
         props: ({ row }: { row: DictData }) => ({
-          color: row.platform === 'general' ? 'default' : 'info',
+          // 预设样式：仅当 row.tag_type ∈ Naive UI NTag 6 项白名单时上彩色 tag；
+          // 其它值（含 legacy 颜色预设如 magenta / 空串）一律走纯文本路径，
+          // 避免再次出现"多对一压扁"导致的视觉与下拉语义不一致。
+          color:
+            row.tag_type && NAIVE_TAG_TYPE_SET.has(row.tag_type)
+              ? row.tag_type
+              : '',
         }),
       },
       field: 'platform',
