@@ -32,6 +32,8 @@ function createWebStorageAdapter(
   key: string,
   ttl?: number,
 ): ViewedRowStorageAdapter {
+  // adapter 仅走单 key 的 get/set/remove，不会触发 StorageManager 的 clear()/keys() 路径，
+  // 因此即使 driver 是 LocalStorageDriver 也不需要 prefix（保持 storage key 形态稳定）。
   const manager = new StorageManager({
     driver: new LocalStorageDriver({ storageType }),
   });

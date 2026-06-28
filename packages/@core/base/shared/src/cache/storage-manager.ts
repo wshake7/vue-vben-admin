@@ -16,21 +16,21 @@ import { MemoryStorageDriver } from './memory-storage-driver';
 class StorageManager {
   private driver: IStorageDriver;
   private prefix: string;
+  private warnedEmptyPrefix = false;
 
-  constructor({ driver, prefix = '' }: StorageManagerOptions = {}) {
+  constructor({
+    driver,
+    prefix = '',
+  }: StorageManagerOptions = {}) {
     this.driver = driver || this.createDefaultDriver();
     this.prefix = prefix;
-    if (!this.prefix && this.driver instanceof LocalStorageDriver) {
-      console.warn(
-        '[StorageManager] empty prefix combined with LocalStorageDriver — clear()/keys() will affect every localStorage entry.',
-      );
-    }
   }
 
   /**
    * 清除所有带前缀的存储项
    */
   async clear(): Promise<void> {
+    this.warnIfEmptyPrefixWithLocalStorage();
     const allKeys = await this.driver.keys();
     const fullPrefix = this.prefix ? `${this.prefix}-` : '';
     const prefixedKeys = allKeys.filter((key) => key.startsWith(fullPrefix));
@@ -41,6 +41,7 @@ class StorageManager {
    * 清除所有过期的存储项
    */
   async clearExpiredItems(): Promise<void> {
+    this.warnIfEmptyPrefixWithLocalStorage();
     const allKeys = await this.driver.keys();
     const fullPrefix = this.prefix ? `${this.prefix}-` : '';
     const prefixedKeys = allKeys.filter((key) => key.startsWith(fullPrefix));
@@ -83,6 +84,7 @@ class StorageManager {
    * 获取当前前缀下的所有存储键（已去除前缀部分）
    */
   async keys(): Promise<string[]> {
+    this.warnIfEmptyPrefixWithLocalStorage();
     const allKeys = await this.driver.keys();
     const fullPrefix = this.prefix ? `${this.prefix}-` : '';
     if (!fullPrefix) return allKeys;
@@ -140,6 +142,21 @@ class StorageManager {
    */
   private getFullKey(key: string): string {
     return this.prefix ? `${this.prefix}-${key}` : key;
+  }
+
+  /**
+   * 当没有 prefix 却要扫描整个 localStorage 时给出一次性警告。
+   * 构造时不再告警，避免无谓噪音；只在真正触发风险的方法里提醒。
+   */
+  private warnIfEmptyPrefixWithLocalStorage() {
+    if (this.warnedEmptyPrefix) return;
+    if (this.prefix) return;
+    if (this.driver instanceof LocalStorageDriver) {
+      console.warn(
+        '[StorageManager] empty prefix combined with LocalStorageDriver — clear()/keys() will affect every localStorage entry.',
+      );
+      this.warnedEmptyPrefix = true;
+    }
   }
 }
 
