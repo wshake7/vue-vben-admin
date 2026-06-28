@@ -7,6 +7,7 @@ import { initStores } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/naive';
 
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { useTitle } from '@vueuse/core';
 
 import { $t, setupI18n } from '#/locales';
@@ -15,6 +16,24 @@ import { initComponentAdapter } from './adapter/component';
 import { initSetupVbenForm } from './adapter/form';
 import App from './app.vue';
 import { router } from './router';
+
+/**
+ * 全局 QueryClient 单例。
+ *
+ * - retry: 0 — 与 react-admin 端 `fetchListDictEntries` 的语义对齐,
+ *   dict 这类纯查询接口由调用方按需触发,失败即让 UI 显式处理,避免
+ *   静默重试导致数据陈旧时仍多次请求。
+ * - staleTime: 30s — 字典项 platform 维度在小会话内稳定,默认 30s 缓存
+ *   减少重复请求;可通过 useQuery options.staleTime 在调用方覆盖。
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 0,
+      staleTime: 30_000,
+    },
+  },
+});
 
 async function bootstrap(namespace: string) {
   // 初始化组件适配器
@@ -52,6 +71,9 @@ async function bootstrap(namespace: string) {
   // 初始化 tippy
   const { initTippy } = await import('@vben/common-ui/es/tippy');
   initTippy(app);
+
+  // 配置 vue-query(全局 QueryClient 单例)
+  app.use(VueQueryPlugin, { queryClient });
 
   // 配置路由及路由守卫
   app.use(router);
