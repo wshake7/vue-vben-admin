@@ -430,12 +430,12 @@ export function useDataSearchSchema(): VbenFormProps['schema'] {
  * ============================================================ */
 type DictDict = { label: string; tag_type: string };
 
-const SWITCH_STATUS_FALLBACK_NUM: Record<1 | 0, string> = {
+const SWITCH_STATUS_FALLBACK_NUM: Record<0 | 1, string> = {
   1: '启用',
   0: '禁用',
 };
 
-function isEnabledKey(n: number): 'enabled' | 'disabled' {
+function isEnabledKey(n: number): 'disabled' | 'enabled' {
   return n === 1 ? 'enabled' : 'disabled';
 }
 
@@ -517,8 +517,8 @@ export function useTypeColumns(
 
 export function useDataColumns(
   opts: {
-    switchStatusDict?: DictData[];
     platformDict?: DictData[];
+    switchStatusDict?: DictData[];
   } = {},
 ): VxeTableGridOptions['columns'] {
   const switchStatusMap = buildSwitchStatusMap(opts.switchStatusDict);

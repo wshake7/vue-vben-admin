@@ -1,3 +1,7 @@
+import type { UseMutationOptions, UseQueryOptions } from '@tanstack/vue-query';
+
+import type { MaybeRefOrGetter } from 'vue';
+
 /**
  * 字典管理 vue-query hook 层
  *
@@ -23,13 +27,7 @@ import type {
   UpdateDictTypeRequest,
 } from './types';
 
-import {
-  useMutation,
-  useQuery,
-  type UseMutationOptions,
-  type UseQueryOptions,
-} from '@tanstack/vue-query';
-import type { MaybeRefOrGetter } from 'vue';
+import { useMutation, useQuery } from '@tanstack/vue-query';
 
 import {
   createDictDataApi,
@@ -84,7 +82,7 @@ export function useListDictType(
   query: MaybeRefOrGetter<DictTypeQuery> = {},
   options?: Omit<
     UseQueryOptions<PageResult<DictType>, Error>,
-    'queryKey' | 'queryFn'
+    'queryFn' | 'queryKey'
   >,
 ) {
   // 解包一次拿到稳定值；queryKey 依赖稳定值避免 watchEffect 反复触发。
@@ -140,7 +138,7 @@ export function useListDictData(
   query: MaybeRefOrGetter<DictDataQuery> = {},
   options?: Omit<
     UseQueryOptions<PageResult<DictData>, Error>,
-    'queryKey' | 'queryFn'
+    'queryFn' | 'queryKey'
   >,
 ) {
   const stableQuery = unwrap(query, {} as DictDataQuery);
