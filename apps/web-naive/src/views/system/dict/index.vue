@@ -2,7 +2,7 @@
 import type { VxeGridListeners } from '#/adapter/vxe-table';
 import type { DictData, DictType } from '#/api/system/dict';
 
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 
@@ -28,6 +28,7 @@ import {
   fetchDictDataListApi,
   fetchDictTypeListApi,
 } from '#/api/system/dict';
+import { useListDictData } from '#/api/system/dict/hooks';
 import {
   DEFAULT_PLATFORM,
   SEARCH_PLATFORM_OPTIONS,
@@ -85,9 +86,32 @@ const [DataFormDrawer, dataFormDrawerApi] = useVbenDrawer({
 });
 
 // ============================================================
+// 一次 list 调用拉两份字典（sys_switch_status + sys_platform）
+// 客户端按返回的 typeCode 字段拆成 switchStatusDict / platformDict。
+// 字典未加载完时（首次 render / 错误）数组为空，列定义走兜底分支。
+// 显式带 includeGeneral: true：mock dict-data/list.ts 默认 includeGeneral=false，
+// 平台为 react-admin / vue-admin 时不会自动并入 general 组；显式开启后才能
+// 同时拿到 general + 当前平台两组字典项。
+// ============================================================
+const { data: dictPage } = useListDictData({
+  typeCode: ['sys_switch_status', 'sys_platform'],
+  includeGeneral: true,
+});
+const switchStatusDict = computed<DictData[]>(() =>
+  (dictPage.value?.items ?? []).filter(
+    (d) => d.typeCode === 'sys_switch_status',
+  ),
+);
+const platformDict = computed<DictData[]>(() =>
+  (dictPage.value?.items ?? []).filter((d) => d.typeCode === 'sys_platform'),
+);
+
+// ============================================================
 // 左表：字典类型
 // ============================================================
-const typeColumns: ReturnType<typeof useTypeColumns> = useTypeColumns();
+const typeColumns: ReturnType<typeof useTypeColumns> = useTypeColumns({
+  switchStatusDict: switchStatusDict.value,
+});
 
 const typeGridEvents: VxeGridListeners<DictType> = {
   currentRowChange: ({ row }) => {
@@ -154,7 +178,10 @@ const [TypeGrid, typeGridApi] = useVbenVxeGrid<DictType>({
 // ============================================================
 // 右表：字典项
 // ============================================================
-const dataColumns: ReturnType<typeof useDataColumns> = useDataColumns();
+const dataColumns: ReturnType<typeof useDataColumns> = useDataColumns({
+  switchStatusDict: switchStatusDict.value,
+  platformDict: platformDict.value,
+});
 
 const entryGridEvents: VxeGridListeners<DictData> = {
   checkboxChange: ({ row, checked }) => {
