@@ -4,7 +4,7 @@ import { Input, Select } from 'antdv-next';
 const emit = defineEmits(['blur', 'change']);
 
 const modelValue = defineModel<[string, string]>({
-  default: () => [undefined, undefined],
+  default: () => ['', ''],
 });
 
 function onChange() {
