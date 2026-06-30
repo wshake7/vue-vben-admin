@@ -106,12 +106,145 @@ const platformDict = computed<DictData[]>(() =>
   (dictPage.value?.items ?? []).filter((d) => d.typeCode === 'sys_platform'),
 );
 
+/**
+ * 把 is_enabled 0/1 映射成字典 key：1 → 'enabled'，0 → 'disabled'。
+ * 字典里 sys_switch_status 的 value 字段是 enabled/disabled 字符串（与
+ * react-admin 端 isEnabledKey 对齐）。
+ */
+function isEnabledKey(n: 0 | 1 | number): 'disabled' | 'enabled' {
+  return n === 1 ? 'enabled' : 'disabled';
+}
+
+/**
+ * 模板插槽用的 dict 查表 helper。返回 NTag type / label 字符串。
+ * 字典命中失败时 type 走 1 → success / 0 → default（与 react 端 antd 兜底
+ * 颜色一致，保持视觉对齐）；label 走 row 字段原值或通用兜底。
+ *
+ * 这些 helper 内部访问 computed 数组 .value，模板每次重渲时都拿最新
+ * 字典数据，无需把整个 dict map 提前 build。
+ *
+ * 注意：mock dict-data 同时包含 general + 当前平台两份字典项（如
+ * sys_switch_status 在 general 平台 tag_type=''，在 vue-admin 平台
+ * tag_type='success'/'error'）。需要优先匹配当前平台（与 render 该行
+ * 时的默认 platform 一致；DEFAULT_PLATFORM 在 web-naive = 'vue-admin' /
+ * 'general'）；同平台再按 tag_type 非空优先。
+ */
+function switchTagTypeFor(
+  n: number,
+):
+  | 'default'
+  | 'error'
+  | 'info'
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | undefined {
+  const candidates = switchStatusDict.value.filter(
+    (d) => d.value === isEnabledKey(n),
+  );
+  // 优先当前平台；其次任何 tagType 非空的项；最后兜底。
+  const hit =
+    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
+    candidates.find((d) => d.tagType) ??
+    candidates[0];
+  const tagType = hit?.tagType;
+  if (
+    tagType === 'default' ||
+    tagType === 'primary' ||
+    tagType === 'info' ||
+    tagType === 'success' ||
+    tagType === 'warning' ||
+    tagType === 'error'
+  ) {
+    return tagType;
+  }
+  // tag_type 缺失或不在 NTag 白名单 → 走兜底色（success/default），与
+  // react-admin 端的「row.is_enabled === 1 ? 'success' : 'default'」一致。
+  return n === 1 ? 'success' : 'default';
+}
+function switchLabelFor(n: number): string {
+  const candidates = switchStatusDict.value.filter(
+    (d) => d.value === isEnabledKey(n),
+  );
+  const hit =
+    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
+    candidates.find((d) => d.label) ??
+    candidates[0];
+  return hit?.label ?? (n === 1 ? '启用' : '禁用');
+}
+function lookupSwitchTagType(
+  n: 0 | 1,
+):
+  | 'default'
+  | 'error'
+  | 'info'
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | undefined {
+  return switchTagTypeFor(n);
+}
+function lookupSwitchLabel(n: 0 | 1): string {
+  return switchLabelFor(n);
+}
+function platformTagTypeFor(
+  platform: string | undefined,
+):
+  | 'default'
+  | 'error'
+  | 'info'
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | undefined {
+  if (!platform) return undefined;
+  const candidates = platformDict.value.filter((d) => d.value === platform);
+  const hit =
+    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
+    candidates.find((d) => d.tagType) ??
+    candidates[0];
+  const tagType = hit?.tagType;
+  if (
+    tagType === 'default' ||
+    tagType === 'primary' ||
+    tagType === 'info' ||
+    tagType === 'success' ||
+    tagType === 'warning' ||
+    tagType === 'error'
+  ) {
+    return tagType;
+  }
+  return undefined;
+}
+function platformLabelFor(platform: string | undefined): string {
+  if (!platform) return '-';
+  const candidates = platformDict.value.filter((d) => d.value === platform);
+  const hit =
+    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
+    candidates.find((d) => d.label) ??
+    candidates[0];
+  return hit?.label ?? platform;
+}
+function lookupPlatformTagType(
+  platform: string | undefined,
+):
+  | 'default'
+  | 'error'
+  | 'info'
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | undefined {
+  return platformTagTypeFor(platform);
+}
+function lookupPlatformLabel(platform: string | undefined): string {
+  return platformLabelFor(platform);
+}
+
 // ============================================================
 // 左表：字典类型
 // ============================================================
-const typeColumns: ReturnType<typeof useTypeColumns> = useTypeColumns({
-  switchStatusDict: switchStatusDict.value,
-});
+const typeColumns: ReturnType<typeof useTypeColumns> = useTypeColumns();
 
 const typeGridEvents: VxeGridListeners<DictType> = {
   currentRowChange: ({ row }) => {
@@ -178,10 +311,7 @@ const [TypeGrid, typeGridApi] = useVbenVxeGrid<DictType>({
 // ============================================================
 // 右表：字典项
 // ============================================================
-const dataColumns: ReturnType<typeof useDataColumns> = useDataColumns({
-  switchStatusDict: switchStatusDict.value,
-  platformDict: platformDict.value,
-});
+const dataColumns: ReturnType<typeof useDataColumns> = useDataColumns();
 
 const entryGridEvents: VxeGridListeners<DictData> = {
   checkboxChange: ({ row, checked }) => {
@@ -443,6 +573,20 @@ function setIncludeGeneralField(value: boolean) {
                 </NPopconfirm>
               </NSpace>
             </template>
+
+            <!--
+              字典状态列：cellRender.pros 在不同 vxe-table 版本下函数求值
+              行为不一致，这里改用模板插槽直接渲染 NTag。
+              颜色与文本由 switchStatusDict（computed -> ref）实时查表。
+            -->
+            <template #dict_status="{ row }">
+              <NTag
+                :type="lookupSwitchTagType(row.isEnabled as 0 | 1)"
+                size="small"
+              >
+                {{ lookupSwitchLabel(row.isEnabled as 0 | 1) }}
+              </NTag>
+            </template>
           </TypeGrid>
         </NCard>
       </NGridItem>
@@ -463,6 +607,30 @@ function setIncludeGeneralField(value: boolean) {
             </NSpace>
           </template>
           <EntryGrid table-title="字典条目列表">
+            <template #dict_platform="{ row }">
+              <NTag
+                :type="lookupPlatformTagType(row.platform) ?? 'default'"
+                size="small"
+              >
+                {{ lookupPlatformLabel(row.platform) }}
+              </NTag>
+            </template>
+            <template #dict_default="{ row }">
+              <NTag
+                :type="row.isDefault === 1 ? 'info' : 'default'"
+                size="small"
+              >
+                {{ row.isDefault === 1 ? '默认' : '-' }}
+              </NTag>
+            </template>
+            <template #dict_status="{ row }">
+              <NTag
+                :type="lookupSwitchTagType(row.isEnabled as 0 | 1)"
+                size="small"
+              >
+                {{ lookupSwitchLabel(row.isEnabled as 0 | 1) }}
+              </NTag>
+            </template>
             <template
               #form-platform="{
                 value: platformValue,

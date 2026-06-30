@@ -27,6 +27,8 @@ import type {
   UpdateDictTypeRequest,
 } from './types';
 
+import { isRef } from 'vue';
+
 import { useMutation, useQuery } from '@tanstack/vue-query';
 
 import {
@@ -54,24 +56,28 @@ export const CURRENT_PLATFORM: string =
 // =========================================================
 
 /**
- * 解包 ref / getter；普通值原样返回；与 vue-query 内部 useQuery 的
- * queryKey 处理兼容（vue-query 期望 queryKey 是稳定结构，避免 watchEffect
- * 误把整个对象当响应式源）。
+ * 解包 ref / getter / 普通值。
  *
- * 用 `MaybeRef<T>` 形态作为对象分支（vue 的 ref / computed）的入口：
- *   - MaybeRef<T> = Ref<T> | T —— 我们只取对象的 `{ value: T }` 通道，
- *     因此用结构子类型 cast `{ value: T }` 是安全的；不为 value 通道
- *     使用 unref() 因为 unref 的重载会让 T 退化为 unknown。
+ * 修复历史：旧版仅判断 function / RefLike(value.value)，对普通对象
+ * `{ typeCode: [...], includeGeneral: true }` 会强转 `RefLike<T>` 后读
+ * `.value` 取到 `undefined`，导致 useListDictData 调出的 query 丢掉
+ * 调用方传入的字段（只发 `?platform=vue-admin`）。
+ *
+ * 当前四分支优先级：
+ *   1. null / undefined → fallback
+ *   2. function → 当 getter 调用
+ *   3. isRef(value) → 取 value.value（vue 官方守卫，避免 unref 重载让 T 退化）
+ *   4. 其他（普通对象 / 数组 / 字符串 / 数字等）→ 原样返回
  */
-type RefLike<T> = { value: T };
-
 function unwrap<T>(value: MaybeRefOrGetter<T> | undefined, fallback: T): T {
   if (value === undefined || value === null) return fallback;
   if (typeof value === 'function') {
     return (value as () => T)();
   }
-  // Ref<T> 对象走结构子类型通道，避免 unref() 重载导致 T 退化为 unknown
-  return (value as RefLike<T>).value;
+  if (isRef(value)) {
+    return value.value as T;
+  }
+  return value;
 }
 
 // =========================================================

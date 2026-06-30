@@ -129,25 +129,25 @@ function resetDataModel() {
 }
 
 function fillDataModelFromRow(d: DictData) {
-  // 编辑回显：usePresetStyle 由 row.tag_type 决定。
-  // - tag_type 为空 / 'default' → hasPreset=false（与之前一致）
-  // - tag_type 在 Naive UI 白名单内 → hasPreset=true，原值回填到下拉
-  // - tag_type 不在白名单（legacy 颜色预设如 magenta / processing）→
+  // 编辑回显：usePresetStyle 由 row.tagType 决定。
+  // - tagType 为空 / 'default' → hasPreset=false（与之前一致）
+  // - tagType 在 Naive UI 白名单内 → hasPreset=true，原值回填到下拉
+  // - tagType 不在白名单（legacy 颜色预设如 magenta / processing）→
   //   hasPreset=false，previewElType 走纯文本路径，并打 legacyPresetHit 标记
   //   让预览下方显示一行小字提示用户「保存后会丢颜色」
-  const tt = d.tag_type ?? '';
+  const tt = d.tagType ?? '';
   const isLegacy = !!tt && tt !== 'default' && !NAIVE_TAG_TYPE_SET.has(tt);
   const hasPreset = !!tt && tt !== 'default' && NAIVE_TAG_TYPE_SET.has(tt);
   Object.assign(dataModel, {
-    typeId: d.type_id,
+    typeId: d.typeId,
     value: d.value,
     label: d.label,
     sort: d.sort,
-    isDefault: d.is_default === 1,
+    isDefault: d.isDefault === 1,
     platform: d.platform,
     usePresetStyle: hasPreset,
     tagType: hasPreset ? tt : '',
-    isEnabled: d.is_enabled === 1,
+    isEnabled: d.isEnabled === 1,
     remark: d.remark,
   });
   legacyPresetHit.value = isLegacy;
@@ -208,7 +208,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       const { valid } = await typeFormApi.validate();
       if (!valid) return;
       const values = await typeFormApi.getValues();
-      const body = { ...values, is_enabled: values.is_enabled ? 1 : 0 };
+      const body = { ...values, isEnabled: values.isEnabled ? 1 : 0 };
       req = id.value
         ? updateDictTypeApi(id.value, body as unknown as UpdateDictTypeRequest)
         : createDictTypeApi(body as unknown as CreateDictTypeRequest);
@@ -243,15 +243,15 @@ const [Drawer, drawerApi] = useVbenDrawer({
         sort: dataModel.sort,
         isDefault: dataModel.isDefault,
         platform: dataModel.platform,
-        tag_type: tagType,
-        is_enabled: dataModel.isEnabled ? 1 : 0,
+        tagType,
+        isEnabled: dataModel.isEnabled ? 1 : 0,
         remark: dataModel.remark,
       };
       req = id.value
         ? updateDictDataApi(id.value, {
             ...body,
             id: id.value,
-            is_default: body.isDefault ? 1 : 0,
+            isDefault: body.isDefault ? 1 : 0,
           } as unknown as UpdateDictDataRequest)
         : createDictDataApi(body);
     }
@@ -289,7 +289,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       if (props.kind === 'type') {
         const t = data as DictType;
         await nextTick();
-        typeFormApi.setValues({ ...t, is_enabled: t.is_enabled === 1 });
+        typeFormApi.setValues({ ...t, isEnabled: t.isEnabled === 1 });
       } else {
         fillDataModelFromRow(data as DictData);
       }
@@ -401,7 +401,7 @@ const drawerTitle = computed(() => {
               </span>
             </div>
             <div class="flex items-center">
-              <NTag v-if="dataModel.usePresetStyle" :type="previewElType" round>
+              <NTag v-if="dataModel.usePresetStyle" :type="previewElType">
                 {{ previewShowText }}
               </NTag>
               <span v-else class="text-sm text-gray-500">{{

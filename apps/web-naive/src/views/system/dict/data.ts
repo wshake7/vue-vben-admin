@@ -1,6 +1,6 @@
 import type { VbenFormProps } from '#/adapter/form';
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { DictData, DictType } from '#/api/system/dict';
+import type { DictType } from '#/api/system/dict';
 
 import { z } from '#/adapter/form';
 import { fetchAllDictTypesApi } from '#/api/system/dict';
@@ -187,7 +187,7 @@ export function useTypeFormSchema(): VbenFormProps['schema'] {
     },
     {
       component: 'Switch',
-      fieldName: 'is_enabled',
+      fieldName: 'isEnabled',
       label: '启用',
       defaultValue: 1,
     },
@@ -203,8 +203,8 @@ export function useTypeFormSchema(): VbenFormProps['schema'] {
  *   3. 跨列字段（所属类型 / 备注 / 预览）formItemClass='col-span-2'
  *   4. 两列并排字段自然成对（字典值+字典标签 / 排序+归属平台 / 是否默认+启用）
  *
- * usePresetStyle：默认开；编辑时回显由 row.tag_type 决定（既非空又非 'default' → 开）。
- * tag_type：预设样式标识；usePresetStyle=false 时强制 ''（列表按纯 label 文本渲染）；
+ * usePresetStyle：默认开；编辑时回显由 row.tagType 决定（既非空又非 'default' → 开）。
+ * tagType：预设样式标识；usePresetStyle=false 时强制 ''（列表按纯 label 文本渲染）；
  *           usePresetStyle=true 时沿用 schema 默认值 'primary'（"主要"）。
  * 预览：form.vue 模板里通过 `<template #tag_preview>` 注入，schema 中
  *       tag_preview 占位字段（Divider + col-span-2）只承担"挂载点"和
@@ -267,7 +267,7 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
       // 与 PRD 行为契约表一致。runtime form 走 form.vue 手写 reactive model，
       // schema 仅作 reference；这里静态导出保证 schema 编译通过。
       component: 'Select',
-      fieldName: 'tag_type',
+      fieldName: 'tagType',
       label: '预设样式',
       defaultValue: 'primary',
       dependencies: {
@@ -325,7 +325,7 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
     },
     {
       component: 'Switch',
-      fieldName: 'is_enabled',
+      fieldName: 'isEnabled',
       label: '启用',
       defaultValue: true,
     },
@@ -422,51 +422,13 @@ export function useDataSearchSchema(): VbenFormProps['schema'] {
  * 第一列 type='checkbox' 用于多选；批量工具栏由父组件通过 gridEvents
  * （checkboxChange / checkboxAll）拿到勾选行后渲染。
  *
- * useTypeColumns / useDataColumns 接受 dict map 入参：列定义依赖
- * sys_switch_status / sys_platform 字典项做 label + tag_type 查表，
- * 由父组件 useListDictData 一次拉两份字典后拆分得到。
- * 字典未加载完成时（opts 缺省或数组为空）走兜底：状态列写死「启用/禁用」，
- * 平台列显示 row.platform 原字符串。
+ * 字典状态列 / 平台列走 slots（`dict_status` / `dict_platform`），由
+ * index.vue 模板中根据 switchStatusDict / platformDict 查表后渲染 <NTag>。
+ * 选 slots 而不是 cellRender 是因为 vxe-table 在不同版本下对
+ * cellRender.props 函数求值的语义不一致，模板插槽完全在 Vue 渲染
+ * 体系内，颜色/文本随 dict 数据更新即时同步。
  * ============================================================ */
-type DictDict = { label: string; tag_type: string };
-
-const SWITCH_STATUS_FALLBACK_NUM: Record<0 | 1, string> = {
-  1: '启用',
-  0: '禁用',
-};
-
-function isEnabledKey(n: number): 'disabled' | 'enabled' {
-  return n === 1 ? 'enabled' : 'disabled';
-}
-
-function buildSwitchStatusMap(
-  items: DictData[] | undefined,
-): Map<string, DictDict> {
-  const m = new Map<string, DictDict>();
-  for (const d of items ?? []) {
-    if (d.typeCode === 'sys_switch_status') {
-      m.set(d.value, { label: d.label, tag_type: d.tag_type });
-    }
-  }
-  return m;
-}
-
-function buildPlatformMap(
-  items: DictData[] | undefined,
-): Map<string, DictDict> {
-  const m = new Map<string, DictDict>();
-  for (const d of items ?? []) {
-    if (d.typeCode === 'sys_platform') {
-      m.set(d.value, { label: d.label, tag_type: d.tag_type });
-    }
-  }
-  return m;
-}
-
-export function useTypeColumns(
-  opts: { switchStatusDict?: DictData[] } = {},
-): VxeTableGridOptions['columns'] {
-  const switchStatusMap = buildSwitchStatusMap(opts.switchStatusDict);
+export function useTypeColumns(): VxeTableGridOptions['columns'] {
   return [
     { type: 'checkbox', width: 44, fixed: 'left' },
     { field: 'id', title: 'ID', width: 80 },
@@ -474,33 +436,13 @@ export function useTypeColumns(
     { field: 'name', title: '类型名称', width: 140, showOverflow: 'tooltip' },
     { field: 'remark', title: '备注', minWidth: 160, showOverflow: 'tooltip' },
     {
-      cellRender: {
-        name: 'CellTag',
-        props: ({ row }: { row: DictType }) => {
-          const key = isEnabledKey(row.is_enabled);
-          const tagType = switchStatusMap.get(key)?.tag_type;
-          // 字典未命中或 tag_type 不在 NTag 白名单 → 走兜底色（success/default）
-          if (tagType && NAIVE_TAG_TYPE_SET.has(tagType)) {
-            return { color: tagType };
-          }
-          return { color: row.is_enabled === 1 ? 'success' : 'default' };
-        },
-      },
-      field: 'is_enabled',
+      slots: { default: 'dict_status' },
+      field: 'isEnabled',
       title: '状态',
       width: 90,
-      formatter: ({ row }: { row: DictType }) => {
-        const key = isEnabledKey(row.is_enabled);
-        return (
-          switchStatusMap.get(key)?.label ??
-          SWITCH_STATUS_FALLBACK_NUM[
-            isEnabledKey(row.is_enabled) === 'enabled' ? 1 : 0
-          ]
-        );
-      },
     },
     {
-      field: 'updated_at',
+      field: 'updatedAt',
       title: '更新时间',
       width: 170,
       formatter: 'formatDateTime',
@@ -515,14 +457,7 @@ export function useTypeColumns(
   ];
 }
 
-export function useDataColumns(
-  opts: {
-    platformDict?: DictData[];
-    switchStatusDict?: DictData[];
-  } = {},
-): VxeTableGridOptions['columns'] {
-  const switchStatusMap = buildSwitchStatusMap(opts.switchStatusDict);
-  const platformMap = buildPlatformMap(opts.platformDict);
+export function useDataColumns(): VxeTableGridOptions['columns'] {
   return [
     { type: 'checkbox', width: 44, fixed: 'left' },
     { field: 'id', title: 'ID', width: 80 },
@@ -535,62 +470,23 @@ export function useDataColumns(
     { field: 'value', title: '字典值', width: 120 },
     { field: 'label', title: '字典标签', width: 140, showOverflow: 'tooltip' },
     {
-      cellRender: {
-        name: 'CellTag',
-        props: ({ row }: { row: DictData }) => {
-          // 平台字段：字典驱动。sys_platform tag_type 全部为空，渲染时 NTag 不
-          // 上彩色（color 留空串 → Naive UI NTag 走默认色），仅显示 label。
-          const tagType = platformMap.get(row.platform)?.tag_type;
-          if (tagType && NAIVE_TAG_TYPE_SET.has(tagType)) {
-            return { color: tagType };
-          }
-          return { color: '' };
-        },
-      },
+      slots: { default: 'dict_platform' },
       field: 'platform',
       title: '归属平台',
       width: 110,
-      formatter: ({ row }: { row: DictData }) =>
-        platformMap.get(row.platform)?.label ?? row.platform,
     },
     { field: 'sort', title: '排序', width: 80 },
     {
-      cellRender: {
-        name: 'CellTag',
-        props: ({ row }: { row: DictData }) => ({
-          color: row.is_default === 1 ? 'processing' : 'default',
-        }),
-      },
-      field: 'is_default',
+      slots: { default: 'dict_default' },
+      field: 'isDefault',
       title: '默认',
       width: 80,
-      formatter: ({ row }: { row: DictData }) =>
-        row.is_default === 1 ? '默认' : '-',
     },
     {
-      cellRender: {
-        name: 'CellTag',
-        props: ({ row }: { row: DictData }) => {
-          const key = isEnabledKey(row.is_enabled);
-          const tagType = switchStatusMap.get(key)?.tag_type;
-          if (tagType && NAIVE_TAG_TYPE_SET.has(tagType)) {
-            return { color: tagType };
-          }
-          return { color: row.is_enabled === 1 ? 'success' : 'default' };
-        },
-      },
-      field: 'is_enabled',
+      slots: { default: 'dict_status' },
+      field: 'isEnabled',
       title: '状态',
       width: 90,
-      formatter: ({ row }: { row: DictData }) => {
-        const key = isEnabledKey(row.is_enabled);
-        return (
-          switchStatusMap.get(key)?.label ??
-          SWITCH_STATUS_FALLBACK_NUM[
-            isEnabledKey(row.is_enabled) === 'enabled' ? 1 : 0
-          ]
-        );
-      },
     },
     { field: 'remark', title: '备注', minWidth: 160, showOverflow: 'tooltip' },
     {
