@@ -91,13 +91,10 @@ const [DataFormDrawer, dataFormDrawerApi] = useVbenDrawer({
 // platformLabels 用 SEARCH_PLATFORM_OPTIONS 兜底：dict 还没拉回来时,
 // 平台列 valueEnum 仍展示「通用 / React Admin / Vue Admin」三项友好文案。
 // ============================================================
-const platformLabels = SEARCH_PLATFORM_OPTIONS.reduce<Record<string, string>>(
-  (acc, { value, label }) => {
-    acc[value] = label;
-    return acc;
-  },
-  {},
-);
+const platformLabels: Record<string, string> = {};
+for (const { value, label } of SEARCH_PLATFORM_OPTIONS) {
+  platformLabels[value] = label;
+}
 const dictLookups = useDictLookups({
   typeCodes: ['sys_switch_status', 'sys_platform'],
   includeGeneral: true,
