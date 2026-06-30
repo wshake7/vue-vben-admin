@@ -1,6 +1,6 @@
 import type { UseMutationOptions, UseQueryOptions } from '@tanstack/vue-query';
 
-import type { MaybeRefOrGetter } from 'vue';
+import type { ComputedRef, MaybeRefOrGetter } from 'vue';
 
 /**
  * 字典管理 vue-query hook 层
@@ -27,7 +27,7 @@ import type {
   UpdateDictTypeRequest,
 } from './types';
 
-import { isRef } from 'vue';
+import { computed, isRef } from 'vue';
 
 import { useMutation, useQuery } from '@tanstack/vue-query';
 
@@ -184,4 +184,192 @@ export function useDeleteDictData(
     mutationFn: (id) => deleteDictDataApi(id),
     ...options,
   });
+}
+
+// =========================================================
+// 字典查表 hook（dict-lookups）
+// =========================================================
+//
+// 设计原则：fallback 由 hook 层承担，应用层不应再写 `?? '启用'` / `?? 'success'`
+// 这类散落的兜底表达式。新增 fallback 类型时改本文件即可，不扩散到业务页。
+//
+// 与 useListDictData 的区别：
+// - useListDictData  → 薄 query wrapper,只返回原始 items,无任何 fallback
+// - useDictLookups   → 在 useListDictData 之上叠加 platform-preferred 命中、
+//                       fallback label / tagType、vxe-grid 友好的 valueEnum
+
+/** DictLookups 返回类型。Vue 端用 ComputedRef 包住以跟随 reactive 数据。 */
+export interface DictLookups {
+  /** 把 isEnabled 0/1 翻译成 dict label;命中失败返回 '启用' / '禁用' */
+  lookupSwitchLabel: (n: 0 | 1 | number) => string;
+  /** 返回 dict 的 tagType;命中失败按 n 走 'success' / 'default'。不预过滤白名单。 */
+  lookupSwitchTagType: (n: 0 | 1 | number) => string | undefined;
+  /** 把 platform code 翻译成 dict label;命中失败返回原 platform（p 未传返回 '-'） */
+  lookupPlatformLabel: (platform: string | undefined) => string;
+  /** 返回 dict 的 tagType;命中失败返回 undefined */
+  lookupPlatformTagType: (platform: string | undefined) => string | undefined;
+  /** vxe-grid status 列 valueEnum（text = label） */
+  switchValueEnum: ComputedRef<Record<0 | 1, { text: string }>>;
+  /** 归属平台列 valueEnum；dict 命中用 dict label，否则用 platformLabels */
+  platformValueEnum: ComputedRef<Record<string, { text: string }>>;
+  /** 字典是否已至少拉过 1 次 */
+  loaded: ComputedRef<boolean>;
+}
+
+export interface UseDictLookupsOptions {
+  /** 要拉的字典类型；默认 ['sys_switch_status', 'sys_platform'] */
+  typeCodes?: string[];
+  /** 是否包含 general 平台；默认 true */
+  includeGeneral?: boolean;
+  /** platform valueEnum 的兜底 label map */
+  platformLabels?: Record<string, string>;
+}
+
+const DEFAULT_TYPE_CODES = ['sys_switch_status', 'sys_platform'];
+const SWITCH_LABEL_FALLBACK: Record<0 | 1, string> = { 1: '启用', 0: '禁用' };
+const SWITCH_TAG_TYPE_FALLBACK: Record<0 | 1, string> = {
+  1: 'success',
+  0: 'default',
+};
+const IS_ENABLED_KEY: Record<0 | 1, 'enabled' | 'disabled'> = {
+  1: 'enabled',
+  0: 'disabled',
+};
+
+function isEnabledKey(n: number): 'enabled' | 'disabled' {
+  return IS_ENABLED_KEY[n === 1 ? 1 : 0];
+}
+
+/**
+ * 多平台候选中选最优一条：当前平台优先 → tagType 非空优先 → 第一项。
+ */
+function pickPreferred(
+  candidates: DictData[],
+  currentPlatform: string,
+): DictData | undefined {
+  return (
+    candidates.find((d) => d.platform === currentPlatform) ??
+    candidates.find((d) => d.tagType) ??
+    candidates[0]
+  );
+}
+
+/**
+ * 字典查表 hook。所有 fallback 文案 / 色值集中在本 hook 内；
+ * 应用层只消费 helper，不再持有 fallback 常量。
+ *
+ * options 接受 MaybeRefOrGetter,与其他 hook 保持一致；
+ * 内部 unwrap 一次拿稳定值,避免 watchEffect 反复触发。
+ */
+export function useDictLookups(
+  options: MaybeRefOrGetter<UseDictLookupsOptions> = {},
+): DictLookups {
+  const stableOptions = unwrap(options, {} as UseDictLookupsOptions);
+  const typeCodes = computed<string[]>(
+    () => stableOptions.typeCodes ?? DEFAULT_TYPE_CODES,
+  );
+  const includeGeneral = computed<boolean>(
+    () => stableOptions.includeGeneral ?? true,
+  );
+  const platformLabels = computed<Record<string, string> | undefined>(
+    () => stableOptions.platformLabels,
+  );
+
+  // 拉原始字典数据（薄包装 useListDictData，无 fallback）
+  const query = useListDictData(() => ({
+    typeCode: typeCodes.value,
+    includeGeneral: includeGeneral.value,
+  }));
+  const items = computed<DictData[]>(() => query.data.value?.items ?? []);
+
+  // 1) 按 typeCode + value 拆桶，2) 每桶用 pickPreferred 选最优一条
+  // 必须 computed:items.value 后续更新时,helper 通过读 .value 拿到最新数据。
+  const switchHits = computed<Map<string, DictData>>(() => {
+    const byValue = new Map<string, DictData[]>();
+    for (const d of items.value) {
+      if (d.typeCode !== 'sys_switch_status') continue;
+      const arr = byValue.get(d.value) ?? [];
+      arr.push(d);
+      byValue.set(d.value, arr);
+    }
+    const out = new Map<string, DictData>();
+    for (const [v, candidates] of byValue.entries()) {
+      const hit = pickPreferred(candidates, CURRENT_PLATFORM);
+      if (hit) out.set(v, hit);
+    }
+    return out;
+  });
+
+  const platformHits = computed<Map<string, DictData>>(() => {
+    const byValue = new Map<string, DictData[]>();
+    for (const d of items.value) {
+      if (d.typeCode !== 'sys_platform') continue;
+      const arr = byValue.get(d.value) ?? [];
+      arr.push(d);
+      byValue.set(d.value, arr);
+    }
+    const out = new Map<string, DictData>();
+    for (const [v, candidates] of byValue.entries()) {
+      const hit = pickPreferred(candidates, CURRENT_PLATFORM);
+      if (hit) out.set(v, hit);
+    }
+    return out;
+  });
+
+  // 2) helper：每个 fallback 在 hook 内闭环;每次调用读 computed .value 保证反应性。
+  const lookupSwitchLabel = (n: 0 | 1 | number): string => {
+    const hit = switchHits.value.get(isEnabledKey(n));
+    return hit?.label ?? SWITCH_LABEL_FALLBACK[n === 1 ? 1 : 0];
+  };
+  const lookupSwitchTagType = (n: 0 | 1 | number): string | undefined => {
+    const hit = switchHits.value.get(isEnabledKey(n));
+    return hit?.tagType ?? SWITCH_TAG_TYPE_FALLBACK[n === 1 ? 1 : 0];
+  };
+  const lookupPlatformLabel = (p: string | undefined): string => {
+    if (!p) return '-';
+    const hit = platformHits.value.get(p);
+    return hit?.label ?? p;
+  };
+  const lookupPlatformTagType = (p: string | undefined): string | undefined => {
+    if (!p) return undefined;
+    return platformHits.value.get(p)?.tagType;
+  };
+
+  // 3) valueEnum：直接喂 vxe-grid column.valueEnum
+  const switchValueEnum = computed<Record<0 | 1, { text: string }>>(() => ({
+    1: { text: lookupSwitchLabel(1) },
+    0: { text: lookupSwitchLabel(0) },
+  }));
+
+  const platformValueEnum = computed<Record<string, { text: string }>>(() => {
+    const out: Record<string, { text: string }> = {};
+    const labels = platformLabels.value ?? {};
+    if (items.value.length === 0) {
+      // dict 还没拉回来 → 用 platformLabels 兜底
+      for (const [v, label] of Object.entries(labels)) {
+        out[v] = { text: label };
+      }
+      return out;
+    }
+    // dict 已加载：优先 dict.label，缺值用 platformLabels，再缺用 raw value
+    for (const [v, hit] of platformHits.value.entries()) {
+      out[v] = { text: hit.label };
+    }
+    for (const [v, label] of Object.entries(labels)) {
+      if (!out[v]) out[v] = { text: label };
+    }
+    return out;
+  });
+
+  const loaded = computed<boolean>(() => items.value.length > 0);
+
+  return {
+    lookupSwitchLabel,
+    lookupSwitchTagType,
+    lookupPlatformLabel,
+    lookupPlatformTagType,
+    switchValueEnum,
+    platformValueEnum,
+    loaded,
+  };
 }
