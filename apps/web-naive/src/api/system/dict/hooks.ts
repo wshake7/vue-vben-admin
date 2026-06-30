@@ -231,12 +231,12 @@ const SWITCH_TAG_TYPE_FALLBACK: Record<0 | 1, string> = {
   1: 'success',
   0: 'default',
 };
-const IS_ENABLED_KEY: Record<0 | 1, 'enabled' | 'disabled'> = {
+const IS_ENABLED_KEY: Record<0 | 1, 'disabled' | 'enabled'> = {
   1: 'enabled',
   0: 'disabled',
 };
 
-function isEnabledKey(n: number): 'enabled' | 'disabled' {
+function isEnabledKey(n: number): 'disabled' | 'enabled' {
   return IS_ENABLED_KEY[n === 1 ? 1 : 0];
 }
 

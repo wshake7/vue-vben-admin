@@ -2,7 +2,7 @@
 import type { VxeGridListeners } from '#/adapter/vxe-table';
 import type { DictData, DictType } from '#/api/system/dict';
 
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 
@@ -28,7 +28,7 @@ import {
   fetchDictDataListApi,
   fetchDictTypeListApi,
 } from '#/api/system/dict';
-import { useListDictData } from '#/api/system/dict/hooks';
+import { useDictLookups } from '#/api/system/dict/hooks';
 import {
   DEFAULT_PLATFORM,
   SEARCH_PLATFORM_OPTIONS,
@@ -86,159 +86,52 @@ const [DataFormDrawer, dataFormDrawerApi] = useVbenDrawer({
 });
 
 // ============================================================
-// 一次 list 调用拉两份字典（sys_switch_status + sys_platform）
-// 客户端按返回的 typeCode 字段拆成 switchStatusDict / platformDict。
-// 字典未加载完时（首次 render / 错误）数组为空，列定义走兜底分支。
-// 显式带 includeGeneral: true：mock dict-data/list.ts 默认 includeGeneral=false，
-// 平台为 react-admin / vue-admin 时不会自动并入 general 组；显式开启后才能
-// 同时拿到 general + 当前平台两组字典项。
+// 字典查表由 useDictLookups hook 提供；所有 fallback label / tagType / 平台
+// 命中策略都在 hook 内闭环,本页不再持有 isEnabledKey / 散落三元等。
+// platformLabels 用 SEARCH_PLATFORM_OPTIONS 兜底：dict 还没拉回来时,
+// 平台列 valueEnum 仍展示「通用 / React Admin / Vue Admin」三项友好文案。
 // ============================================================
-const { data: dictPage } = useListDictData({
-  typeCode: ['sys_switch_status', 'sys_platform'],
+const platformLabels = SEARCH_PLATFORM_OPTIONS.reduce<Record<string, string>>(
+  (acc, { value, label }) => {
+    acc[value] = label;
+    return acc;
+  },
+  {},
+);
+const dictLookups = useDictLookups({
+  typeCodes: ['sys_switch_status', 'sys_platform'],
   includeGeneral: true,
+  platformLabels,
 });
-const switchStatusDict = computed<DictData[]>(() =>
-  (dictPage.value?.items ?? []).filter(
-    (d) => d.typeCode === 'sys_switch_status',
-  ),
-);
-const platformDict = computed<DictData[]>(() =>
-  (dictPage.value?.items ?? []).filter((d) => d.typeCode === 'sys_platform'),
-);
 
-/**
- * 把 is_enabled 0/1 映射成字典 key：1 → 'enabled'，0 → 'disabled'。
- * 字典里 sys_switch_status 的 value 字段是 enabled/disabled 字符串（与
- * react-admin 端 isEnabledKey 对齐）。
- */
-function isEnabledKey(n: 0 | 1 | number): 'disabled' | 'enabled' {
-  return n === 1 ? 'enabled' : 'disabled';
-}
-
-/**
- * 模板插槽用的 dict 查表 helper。返回 NTag type / label 字符串。
- * 字典命中失败时 type 走 1 → success / 0 → default（与 react 端 antd 兜底
- * 颜色一致，保持视觉对齐）；label 走 row 字段原值或通用兜底。
- *
- * 这些 helper 内部访问 computed 数组 .value，模板每次重渲时都拿最新
- * 字典数据，无需把整个 dict map 提前 build。
- *
- * 注意：mock dict-data 同时包含 general + 当前平台两份字典项（如
- * sys_switch_status 在 general 平台 tag_type=''，在 vue-admin 平台
- * tag_type='success'/'error'）。需要优先匹配当前平台（与 render 该行
- * 时的默认 platform 一致；DEFAULT_PLATFORM 在 web-naive = 'vue-admin' /
- * 'general'）；同平台再按 tag_type 非空优先。
- */
-function switchTagTypeFor(
-  n: number,
-):
+// NTag type 严格白名单：hook 返回的 tagType 已是字符串，但 NTag 接受窄类型，
+// 这里做收敛。dict 未命中 / 不在白名单 → undefined（NTag 自带默认样式）。
+type NTagType =
   | 'default'
   | 'error'
   | 'info'
   | 'primary'
   | 'success'
-  | 'warning'
-  | undefined {
-  const candidates = switchStatusDict.value.filter(
-    (d) => d.value === isEnabledKey(n),
-  );
-  // 优先当前平台；其次任何 tagType 非空的项；最后兜底。
-  const hit =
-    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
-    candidates.find((d) => d.tagType) ??
-    candidates[0];
-  const tagType = hit?.tagType;
-  if (
-    tagType === 'default' ||
-    tagType === 'primary' ||
-    tagType === 'info' ||
-    tagType === 'success' ||
-    tagType === 'warning' ||
-    tagType === 'error'
-  ) {
-    return tagType;
-  }
-  // tag_type 缺失或不在 NTag 白名单 → 走兜底色（success/default），与
-  // react-admin 端的「row.is_enabled === 1 ? 'success' : 'default'」一致。
-  return n === 1 ? 'success' : 'default';
-}
-function switchLabelFor(n: number): string {
-  const candidates = switchStatusDict.value.filter(
-    (d) => d.value === isEnabledKey(n),
-  );
-  const hit =
-    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
-    candidates.find((d) => d.label) ??
-    candidates[0];
-  return hit?.label ?? (n === 1 ? '启用' : '禁用');
-}
-function lookupSwitchTagType(
-  n: 0 | 1,
-):
-  | 'default'
-  | 'error'
-  | 'info'
-  | 'primary'
-  | 'success'
-  | 'warning'
-  | undefined {
-  return switchTagTypeFor(n);
-}
-function lookupSwitchLabel(n: 0 | 1): string {
-  return switchLabelFor(n);
-}
-function platformTagTypeFor(
-  platform: string | undefined,
-):
-  | 'default'
-  | 'error'
-  | 'info'
-  | 'primary'
-  | 'success'
-  | 'warning'
-  | undefined {
-  if (!platform) return undefined;
-  const candidates = platformDict.value.filter((d) => d.value === platform);
-  const hit =
-    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
-    candidates.find((d) => d.tagType) ??
-    candidates[0];
-  const tagType = hit?.tagType;
-  if (
-    tagType === 'default' ||
-    tagType === 'primary' ||
-    tagType === 'info' ||
-    tagType === 'success' ||
-    tagType === 'warning' ||
-    tagType === 'error'
-  ) {
-    return tagType;
+  | 'warning';
+const NAIVE_TAG_TYPE_SET: ReadonlySet<NTagType> = new Set<NTagType>([
+  'default',
+  'error',
+  'info',
+  'primary',
+  'success',
+  'warning',
+]);
+function asNTagType(s: string | undefined): NTagType | undefined {
+  if (s && (NAIVE_TAG_TYPE_SET as ReadonlySet<string>).has(s)) {
+    return s as NTagType;
   }
   return undefined;
 }
-function platformLabelFor(platform: string | undefined): string {
-  if (!platform) return '-';
-  const candidates = platformDict.value.filter((d) => d.value === platform);
-  const hit =
-    candidates.find((d) => d.platform === DEFAULT_PLATFORM) ??
-    candidates.find((d) => d.label) ??
-    candidates[0];
-  return hit?.label ?? platform;
+function lookupSwitchTagTypeN(n: 0 | 1): NTagType | undefined {
+  return asNTagType(dictLookups.lookupSwitchTagType(n));
 }
-function lookupPlatformTagType(
-  platform: string | undefined,
-):
-  | 'default'
-  | 'error'
-  | 'info'
-  | 'primary'
-  | 'success'
-  | 'warning'
-  | undefined {
-  return platformTagTypeFor(platform);
-}
-function lookupPlatformLabel(platform: string | undefined): string {
-  return platformLabelFor(platform);
+function lookupPlatformTagTypeN(p: string | undefined): NTagType | undefined {
+  return asNTagType(dictLookups.lookupPlatformTagType(p));
 }
 
 // ============================================================
@@ -581,10 +474,10 @@ function setIncludeGeneralField(value: boolean) {
             -->
             <template #dict_status="{ row }">
               <NTag
-                :type="lookupSwitchTagType(row.isEnabled as 0 | 1)"
+                :type="lookupSwitchTagTypeN(row.isEnabled as 0 | 1)"
                 size="small"
               >
-                {{ lookupSwitchLabel(row.isEnabled as 0 | 1) }}
+                {{ dictLookups.lookupSwitchLabel(row.isEnabled as 0 | 1) }}
               </NTag>
             </template>
           </TypeGrid>
@@ -609,10 +502,10 @@ function setIncludeGeneralField(value: boolean) {
           <EntryGrid table-title="字典条目列表">
             <template #dict_platform="{ row }">
               <NTag
-                :type="lookupPlatformTagType(row.platform) ?? 'default'"
+                :type="lookupPlatformTagTypeN(row.platform) ?? 'default'"
                 size="small"
               >
-                {{ lookupPlatformLabel(row.platform) }}
+                {{ dictLookups.lookupPlatformLabel(row.platform) }}
               </NTag>
             </template>
             <template #dict_default="{ row }">
@@ -625,10 +518,10 @@ function setIncludeGeneralField(value: boolean) {
             </template>
             <template #dict_status="{ row }">
               <NTag
-                :type="lookupSwitchTagType(row.isEnabled as 0 | 1)"
+                :type="lookupSwitchTagTypeN(row.isEnabled as 0 | 1)"
                 size="small"
               >
-                {{ lookupSwitchLabel(row.isEnabled as 0 | 1) }}
+                {{ dictLookups.lookupSwitchLabel(row.isEnabled as 0 | 1) }}
               </NTag>
             </template>
             <template
