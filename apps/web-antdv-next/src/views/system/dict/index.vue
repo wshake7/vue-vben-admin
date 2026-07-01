@@ -355,10 +355,10 @@ function setIncludeGeneralField(value: boolean) {
               <Space :size="8" align="center">
                 <span
                   v-if="typeSelectedIds.size > 0"
-                  style="font-size: 12px; color: rgba(0, 0, 0, 0.45)"
+                  style="font-size: 12px; color: rgb(0 0 0 / 45%)"
                 >
                   已选
-                  <strong style="color: rgba(0, 0, 0, 0.85)">{{
+                  <strong style="color: rgb(0 0 0 / 85%)">{{
                     typeSelectedIds.size
                   }}</strong>
                   条
@@ -385,12 +385,7 @@ function setIncludeGeneralField(value: boolean) {
                   :description="`若仍有字典项将无法删除。当前共 ${typeSelectedIds.size} 项。`"
                   @confirm="bulkTypeAction('delete')"
                 >
-                  <Button
-                    size="small"
-                    danger
-                    ghost
-                    :loading="bulkLoading.type"
-                  >
+                  <Button size="small" danger ghost :loading="bulkLoading.type">
                     批量删除
                   </Button>
                 </Popconfirm>
@@ -445,7 +440,7 @@ function setIncludeGeneralField(value: boolean) {
               <span>字典数据</span>
               <Tag
                 v-if="selectedType"
-                :color="'blue'"
+                color="blue"
                 closable
                 @close="clearEntrySelection"
               >
@@ -504,7 +499,10 @@ function setIncludeGeneralField(value: boolean) {
                     (v) => {
                       if (v == null) {
                         onUpdatePlatform?.(undefined);
-                      } else if (typeof v === 'string' || typeof v === 'number') {
+                      } else if (
+                        typeof v === 'string' ||
+                        typeof v === 'number'
+                      ) {
                         onUpdatePlatform?.(String(v));
                       }
                     }
@@ -529,10 +527,10 @@ function setIncludeGeneralField(value: boolean) {
               <Space :size="8" align="center">
                 <span
                   v-if="entrySelectedIds.size > 0"
-                  style="font-size: 12px; color: rgba(0, 0, 0, 0.45)"
+                  style="font-size: 12px; color: rgb(0 0 0 / 45%)"
                 >
                   已选
-                  <strong style="color: rgba(0, 0, 0, 0.85)">{{
+                  <strong style="color: rgb(0 0 0 / 85%)">{{
                     entrySelectedIds.size
                   }}</strong>
                   条
@@ -558,12 +556,7 @@ function setIncludeGeneralField(value: boolean) {
                   title="确定要删除选中的字典项？"
                   @confirm="bulkEntryAction('delete')"
                 >
-                  <Button
-                    size="small"
-                    danger
-                    ghost
-                    :loading="bulkLoading.data"
-                  >
+                  <Button size="small" danger ghost :loading="bulkLoading.data">
                     批量删除
                   </Button>
                 </Popconfirm>

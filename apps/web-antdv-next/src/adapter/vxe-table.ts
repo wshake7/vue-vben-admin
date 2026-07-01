@@ -54,7 +54,9 @@ const ANTD_TAG_COLOR_SET: ReadonlySet<string> = new Set<AntdTagColor>([
   'yellow',
 ]);
 
-function normalizeAntdTagColor(color: string | undefined): AntdTagColor | undefined {
+function normalizeAntdTagColor(
+  color: string | undefined,
+): AntdTagColor | undefined {
   if (color && ANTD_TAG_COLOR_SET.has(color)) {
     return color as AntdTagColor;
   }

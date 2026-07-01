@@ -12,17 +12,9 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
-import {
-  Card,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  Tag,
-} from 'antdv-next';
+import { Card, Input, InputNumber, Select, Switch, Tag } from 'antdv-next';
 
 import { useVbenForm } from '#/adapter/form';
-
 import {
   createDictDataApi,
   createDictTypeApi,
