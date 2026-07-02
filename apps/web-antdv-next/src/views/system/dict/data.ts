@@ -78,35 +78,22 @@ export const ANTD_TAG_COLOR_SET: Set<string> = new Set(
 );
 
 /**
- * antdv Tag 子集：与 web-naive NTag type 6 项严格对齐的预设
- * （default / primary / success / warning / error / processing）。
- *
- * 用作「字典项新增/编辑」抽屉的「预设样式」下拉选项：仅展示这 6 项，与
- * react-admin 的状态色（primary / success / warning / error / processing）
- * 收敛为同一组语义色，避免「多对一压扁」导致的视觉冲突。
- */
-export const ANTD_TAG_TYPE_OPTIONS: Array<{ label: string; value: string }> = [
-  { label: '默认', value: 'default' },
-  { label: '主要', value: 'primary' },
-  { label: '进行中', value: 'processing' },
-  { label: '成功', value: 'success' },
-  { label: '警告', value: 'warning' },
-  { label: '危险', value: 'error' },
-];
-
-/**
  * 按平台返回预设样式下拉选项。
  * - platform === 'general'（通用）→ 返回 []，开关被 disable、不展示下拉
- * - 其他（自己 / undefined）→ 返回 6 项 antdv Tag 原生 color（与 ANTD_TAG_TYPE_OPTIONS 等价）
+ * - 其他（自己 / undefined）→ 返回 17 项全集（与 react-admin 端对齐）
+ *
+ * antdv-next `<Tag color>` 与 antd 共享同一组 preset colors（13 项
+ * preset + 5 项状态色，参见后端 ALLOWED_TAG_TYPES 17 项无 inverse 子集），
+ * 所以下拉保留全部 17 项；与列表 CellTag 渲染保持一致。
  */
 export function PLATFORM_TAG_TYPE_OPTIONS(
   platform: string | undefined,
 ): Array<{ label: string; value: string }> {
   if (platform === 'general') return [];
-  return ANTD_TAG_TYPE_OPTIONS;
+  return TAG_TYPE_OPTIONS;
 }
 
-export type TagType = (typeof ANTD_TAG_TYPE_OPTIONS)[number]['value'];
+export type TagType = (typeof TAG_TYPE_OPTIONS)[number]['value'];
 
 /* ============================================================
  * 共享：字典类型下拉选项（用于左右两个搜索框的「类型编码」下拉）
@@ -239,7 +226,7 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
     },
     {
       // 关键：依赖 usePresetStyle 字段，关闭时整行隐藏（避免视觉残留）。
-      // 下拉 options 收敛到 antdv Tag 原生支持的子集（ANTD_TAG_TYPE_OPTIONS）；
+      // 下拉 options 收敛到 antdv Tag 原生支持的子集（TAG_TYPE_OPTIONS，17 项）；
       // 与 PRD 行为契约表一致。runtime form 走 form.vue 手写 reactive model，
       // schema 仅作 reference；这里静态导出保证 schema 编译通过。
       component: 'Select',
@@ -252,7 +239,7 @@ export function useDataFormSchema(): VbenFormProps['schema'] {
           values.usePresetStyle !== false,
       },
       componentProps: {
-        options: ANTD_TAG_TYPE_OPTIONS,
+        options: TAG_TYPE_OPTIONS,
         filterable: false,
         placeholder: '请选择预设样式',
       },
