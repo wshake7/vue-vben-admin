@@ -3,6 +3,7 @@ import type {
   CreateDictDataRequest,
   CreateDictTypeRequest,
   DictData,
+  DictTagType,
   DictType,
   UpdateDictDataRequest,
   UpdateDictTypeRequest,
@@ -96,7 +97,8 @@ interface DataFormModel {
   isDefault: boolean;
   platform: string;
   usePresetStyle: boolean;
-  tagType: string;
+  /** 预设样式标识；与 antdv-next `<Tag color>` 签名一致 */
+  tagType: DictTagType;
   isEnabled: boolean;
   remark: string;
 }
@@ -218,7 +220,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       // usePresetStyle=false → 'default'（避免后端 PUT 对空串 400）；
       // usePresetStyle=true 时若当前 tagType 不在 antdv 17 项 color 集合（理论上不应发生，
       // 但防御性归一化），强制回退到 'primary'。
-      let tagType: string;
+      let tagType: DictTagType;
       if (!dataModel.usePresetStyle) {
         tagType = 'default';
       } else if (ANTD_TAG_COLOR_SET.has(dataModel.tagType)) {
