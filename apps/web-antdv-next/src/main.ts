@@ -3,6 +3,9 @@ import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';
 
+// 注册 ALTCHA PoW widget 自定义元素（<altcha-widget>），登录页人机校验
+import 'altcha';
+
 /** 部署级菜单模式：以 VITE_ACCESS_MODE 为准，覆盖 localStorage 历史值 */
 function applyEnvAccessMode() {
   const mode = import.meta.env.VITE_ACCESS_MODE;

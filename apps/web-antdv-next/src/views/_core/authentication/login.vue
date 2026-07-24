@@ -4,9 +4,10 @@ import type { BasicOption } from '@vben/types';
 
 import { computed, markRaw } from 'vue';
 
-import { AuthenticationLogin, SliderCaptcha, z } from '@vben/common-ui';
+import { AuthenticationLogin, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
+import AltchaWidget from '#/components/AltchaWidget.vue';
 import { useAuthStore } from '#/store';
 
 defineOptions({ name: 'Login' });
@@ -79,9 +80,13 @@ const formSchema = computed((): VbenFormSchema[] => {
       rules: z.string().min(1, { message: $t('authentication.passwordTip') }),
     },
     {
-      component: markRaw(SliderCaptcha),
-      fieldName: 'captcha',
-      rules: z.boolean().refine((value) => value, {
+      component: markRaw(AltchaWidget),
+      componentProps: {
+        challenge: '/api/altcha/challenge',
+        language: 'zh',
+      },
+      fieldName: 'altcha',
+      rules: z.string().min(1, {
         message: $t('authentication.verifyRequiredTip'),
       }),
     },
