@@ -63,6 +63,12 @@ onMounted(() => {
   widget = document.createElement('altcha-widget');
   widget.setAttribute('language', props.language);
   widget.setAttribute('challenge', props.challenge);
+  // hideLogo/hideFooter 不是 HTML 属性，需走 configuration JSON
+  // @see altcha create_custom_element props: configuration only
+  widget.setAttribute(
+    'configuration',
+    JSON.stringify({ hideLogo: true, hideFooter: true }),
+  );
   widget.addEventListener('statechange', onStateChange);
   el.append(widget);
 });
@@ -81,12 +87,23 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* 与上方密码/账号输入框同宽对齐；覆盖 ALTCHA 默认 max-width: 320px */
 .altcha-widget-host {
+  --altcha-max-width: 100%;
+
+  display: block;
   width: 100%;
 }
 
 .altcha-widget-host :deep(altcha-widget) {
   display: block;
   width: 100%;
+}
+
+.altcha-widget-host :deep(.altcha),
+.altcha-widget-host :deep(.altcha-main) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 </style>
