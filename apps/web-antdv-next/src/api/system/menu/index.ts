@@ -65,4 +65,15 @@ export function setMenuApisApi(id: number, apiIds: number[]) {
   );
 }
 
+/**
+ * 按菜单 ID 聚合 sys_menu_api → 去重 apiIds。
+ * 角色授权「从已选菜单带出接口」用。
+ */
+export function fetchApisByMenusApi(menuIds: number[]) {
+  return requestClient.post<{ apiIds: number[]; menuIds: number[] }>(
+    '/system/menu/apis-by-menus',
+    { menuIds },
+  );
+}
+
 export type * from './types';

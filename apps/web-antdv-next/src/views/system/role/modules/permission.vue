@@ -8,16 +8,19 @@ import { useRouter } from 'vue-router';
 import { useVbenDrawer } from '@vben/common-ui';
 
 import {
+  Button,
   Checkbox,
   Collapse,
   CollapsePanel,
   Input,
   message,
+  Space,
   TabPane,
   Tabs,
   Tag,
 } from 'antdv-next';
 
+import { fetchApisByMenusApi } from '#/api/system/menu';
 import {
   fetchRoleApisApi,
   fetchRoleMenusApi,
@@ -36,6 +39,7 @@ const roleId = ref(0);
 const roleName = ref('');
 const activeTab = ref<'api' | 'data' | 'menu'>('menu');
 const saving = ref(false);
+const pulling = ref(false);
 
 // 菜单权限
 const allMenus = ref<RoleMenuBindItem[]>([]);
@@ -48,7 +52,7 @@ const apiSearch = ref('');
 
 const [Drawer, drawerApi] = useVbenDrawer({
   cancelText: '取消',
-  confirmText: '保存',
+  confirmText: '保存菜单授权',
   onCancel() {
     drawerApi.close();
   },
@@ -88,20 +92,24 @@ watch(activeTab, (tab) => {
 
 async function save() {
   if (!roleId.value) return;
+  if (activeTab.value === 'data') {
+    message.info('数据权限暂未实现');
+    return;
+  }
   saving.value = true;
   try {
     if (activeTab.value === 'menu') {
       await setRoleMenusApi(roleId.value, [...checkedMenuIds.value]);
-      message.success('菜单授权已保存');
+      message.success('菜单授权已保存；可切换到「接口权限」从已选菜单带出接口');
       await refreshAccess(router);
+      emits('success');
+      // 保持抽屉打开，便于继续配接口
     } else if (activeTab.value === 'api') {
       await setRoleApisApi(roleId.value, [...checkedApiIds.value]);
       message.success('接口授权已保存');
-    } else {
-      message.info('数据权限暂未实现');
+      emits('success');
+      drawerApi.close();
     }
-    emits('success');
-    drawerApi.close();
   } catch (error) {
     message.error((error as Error).message ?? '保存失败');
   } finally {
@@ -110,7 +118,7 @@ async function save() {
 }
 
 /* ============================================================
- * 菜单树：本地组树 + Checkbox 勾选
+ * 菜单树：本地组树 → 扁平深度列表（任意深度）
  * ============================================================ */
 interface MenuNode extends SysMenu {
   children?: MenuNode[];
@@ -141,6 +149,19 @@ const menuTree = computed<MenuNode[]>(() => {
   return roots;
 });
 
+/** 深度优先展平，模板只 v-for 一层即可覆盖 DIR/MENU/BUTTON 任意层级 */
+const flatMenuRows = computed(() => {
+  const rows: Array<{ depth: number; node: MenuNode }> = [];
+  const walk = (nodes: MenuNode[], depth: number) => {
+    for (const node of nodes) {
+      rows.push({ node, depth });
+      if (node.children?.length) walk(node.children, depth + 1);
+    }
+  };
+  walk(menuTree.value, 0);
+  return rows;
+});
+
 function toggleMenuNode(node: MenuNode, checked: boolean) {
   const next = new Set(checkedMenuIds.value);
   const walk = (n: MenuNode, on: boolean) => {
@@ -152,8 +173,20 @@ function toggleMenuNode(node: MenuNode, checked: boolean) {
   checkedMenuIds.value = next;
 }
 
+function typeTagColor(type: string) {
+  if (type === 'DIR') return 'blue';
+  if (type === 'MENU') return 'green';
+  return 'orange';
+}
+
+function typeTagLabel(type: string) {
+  if (type === 'DIR') return 'DIR';
+  if (type === 'MENU') return 'MENU';
+  return 'BTN';
+}
+
 /* ============================================================
- * 接口权限：按 apiGroup 分组 Collapse（仿 menu form.vue）
+ * 接口权限：按 apiGroup 分组 Collapse
  * ============================================================ */
 const groupedApis = computed(() => {
   const groups = new Map<string, RoleApiBindItem[]>();
@@ -198,6 +231,34 @@ function toggleApiGroup(apis: RoleApiBindItem[], checked: boolean) {
   });
   checkedApiIds.value = next;
 }
+
+/** 从当前勾选菜单的 menu_api 绑定并入接口勾选（不覆盖已选手选） */
+async function pullApisFromMenus() {
+  if (checkedMenuIds.value.size === 0) {
+    message.warning('请先在「菜单权限」中勾选菜单');
+    return;
+  }
+  pulling.value = true;
+  try {
+    const res = await fetchApisByMenusApi([...checkedMenuIds.value]);
+    const prev = checkedApiIds.value;
+    const added = res.apiIds.filter((id) => !prev.has(id)).length;
+    const next = new Set(prev);
+    res.apiIds.forEach((id) => next.add(id));
+    checkedApiIds.value = next;
+    if (res.apiIds.length === 0) {
+      message.info('已选菜单尚未绑定接口（请先在菜单管理中绑定）');
+    } else {
+      message.success(
+        `已从菜单带出 ${res.apiIds.length} 个接口（新增 ${added}）`,
+      );
+    }
+  } catch (error) {
+    message.error((error as Error).message ?? '带出接口失败');
+  } finally {
+    pulling.value = false;
+  }
+}
 </script>
 
 <template>
@@ -212,81 +273,57 @@ function toggleApiGroup(apis: RoleApiBindItem[], checked: boolean) {
       <TabPane key="data" tab="数据权限" disabled />
     </Tabs>
 
-    <!-- 菜单权限 -->
+    <!-- 菜单权限：扁平深度列表覆盖任意层级 -->
     <div v-show="activeTab === 'menu'">
       <div style="margin-bottom: 8px; color: #666">
-        已选 <strong>{{ checkedMenuIds.size }}</strong> 个菜单
+        已选
+        <strong>{{ checkedMenuIds.size }}</strong>
+        个菜单。保存后全量替换菜单授权；
+        接口需在「接口权限」单独保存，可用「从已选菜单带出接口」。
       </div>
       <div class="menu-tree">
-        <template v-for="node in menuTree" :key="node.id">
-          <div class="menu-node" :style="{ marginLeft: 0 }">
-            <Checkbox
-              :checked="checkedMenuIds.has(node.id)"
-              @change="(e: any) => toggleMenuNode(node, e.target.checked)"
-            >
-              <Tag
-                v-if="node.type === 'DIR'"
-                color="blue"
-                style="margin-right: 4px"
-              >
-                DIR
-              </Tag>
-              <Tag
-                v-else-if="node.type === 'MENU'"
-                color="green"
-                style="margin-right: 4px"
-              >
-                MENU
-              </Tag>
-              <Tag v-else color="orange" style="margin-right: 4px">BTN</Tag>
-              {{ node.name }}
-            </Checkbox>
-          </div>
-          <template v-if="node.children?.length">
-            <div
-              v-for="child in node.children"
-              :key="child.id"
-              class="menu-node"
-              style="margin-left: 24px"
-            >
-              <Checkbox
-                :checked="checkedMenuIds.has(child.id)"
-                @change="(e: any) => toggleMenuNode(child, e.target.checked)"
-              >
-                <Tag
-                  v-if="child.type === 'DIR'"
-                  color="blue"
-                  style="margin-right: 4px"
-                >
-                  DIR
-                </Tag>
-                <Tag
-                  v-else-if="child.type === 'MENU'"
-                  color="green"
-                  style="margin-right: 4px"
-                >
-                  MENU
-                </Tag>
-                <Tag v-else color="orange" style="margin-right: 4px">BTN</Tag>
-                {{ child.name }}
-              </Checkbox>
-            </div>
-          </template>
-        </template>
-        <div v-if="!menuTree.length" style="color: #999">暂无菜单</div>
+        <div
+          v-for="{ node, depth } in flatMenuRows"
+          :key="node.id"
+          class="menu-node"
+          :style="{ marginLeft: `${depth * 24}px` }"
+        >
+          <Checkbox
+            :checked="checkedMenuIds.has(node.id)"
+            @change="(e: any) => toggleMenuNode(node, e.target.checked)"
+          >
+            <Tag :color="typeTagColor(node.type)" style="margin-right: 4px">
+              {{ typeTagLabel(node.type) }}
+            </Tag>
+            {{ node.name }}
+          </Checkbox>
+        </div>
+        <div v-if="!flatMenuRows.length" style="color: #999">暂无菜单</div>
       </div>
     </div>
 
     <!-- 接口权限 -->
     <div v-show="activeTab === 'api'">
-      <Input
-        v-model:value="apiSearch"
-        placeholder="按路径或名称搜索接口..."
-        allow-clear
-        style="margin-bottom: 12px"
-      />
+      <Space style="margin-bottom: 12px" wrap>
+        <Input
+          v-model:value="apiSearch"
+          placeholder="按路径或名称搜索接口..."
+          allow-clear
+          style="width: 280px"
+        />
+        <Button
+          :loading="pulling"
+          :disabled="checkedMenuIds.size === 0"
+          @click="pullApisFromMenus"
+        >
+          从已选菜单带出接口
+        </Button>
+      </Space>
       <div style="margin-bottom: 8px; color: #666">
         已选 <strong>{{ checkedApiIds.size }}</strong> 个接口
+        <span style="margin-left: 8px; font-size: 12px">
+          （带出 = 并入 menu_api 绑定，不取消已选手选）
+        </span>
       </div>
       <Collapse :default-active-key="groupedApis.map((g) => g[0])">
         <CollapsePanel v-for="[group, apis] in groupedApis" :key="group">
@@ -325,11 +362,6 @@ function toggleApiGroup(apis: RoleApiBindItem[], checked: boolean) {
         </CollapsePanel>
       </Collapse>
     </div>
-
-    <!-- 数据权限占位 -->
-    <div v-show="activeTab === 'data'" style="padding: 24px; color: #999">
-      数据权限暂未实现
-    </div>
   </Drawer>
 </template>
 
@@ -345,7 +377,7 @@ function toggleApiGroup(apis: RoleApiBindItem[], checked: boolean) {
 .menu-tree {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .menu-node {

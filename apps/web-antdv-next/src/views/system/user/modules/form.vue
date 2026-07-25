@@ -105,10 +105,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
     if (!isOpen) return;
     resetModel();
 
-    // 拉语言与角色下拉
+    // 拉语言与角色下拉（仅启用角色，避免绑到已禁用角色）
     const [locales, roles] = await Promise.all([
       fetchAllI18nLocalesApi(),
-      fetchAllRolesApi(),
+      fetchAllRolesApi({ status: 1 }),
     ]);
     localeOptions.value = locales.map((l) => ({
       label: `${l.name}（${l.code}）`,

@@ -85,43 +85,43 @@ const projectItems: WorkbenchProjectItem[] = [
   },
 ];
 
-// 同样，这里的 url 也可以使用以 http 开头的外部链接
+// 快捷入口对齐真实业务路由（与 React workspace quickNav 一致）
 const quickNavItems: WorkbenchQuickNavItem[] = [
   {
     color: '#1fdaca',
-    icon: 'ion:home-outline',
-    title: '首页',
-    url: '/',
+    icon: 'ion:analytics-outline',
+    title: '分析页',
+    url: '/analytics',
   },
   {
     color: '#bf0c2c',
     icon: 'ion:grid-outline',
-    title: '仪表盘',
-    url: '/dashboard',
+    title: '工作台',
+    url: '/workspace',
   },
   {
     color: '#e18525',
-    icon: 'ion:layers-outline',
-    title: '组件',
-    url: '/demos/features/icons',
+    icon: 'ion:person-outline',
+    title: '用户管理',
+    url: '/system/user',
   },
   {
     color: '#3fb27f',
-    icon: 'ion:settings-outline',
-    title: '系统管理',
-    url: '/demos/features/login-expired', // 这里的 URL 是示例，实际项目中需要根据实际情况进行调整
+    icon: 'ion:shield-checkmark-outline',
+    title: '角色管理',
+    url: '/system/role',
   },
   {
     color: '#4daf1bc9',
-    icon: 'ion:key-outline',
-    title: '权限管理',
-    url: '/demos/access/page-control',
+    icon: 'ion:menu-outline',
+    title: '菜单管理',
+    url: '/system/menu',
   },
   {
     color: '#00d8ff',
-    icon: 'ion:bar-chart-outline',
-    title: '图表',
-    url: '/analytics',
+    icon: 'ion:terminal-outline',
+    title: '接口管理',
+    url: '/system/api',
   },
 ];
 
