@@ -6,7 +6,7 @@ import type {
   I18nTranslationKey,
 } from '#/api/system/i18n';
 
-import { onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 
@@ -27,15 +27,16 @@ import JSZip from 'jszip';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useDictLookups } from '#/api/system/dict/hooks';
 import {
-  batchI18nLocaleApi,
-  batchI18nTranslationApi,
-  deleteI18nTranslationApi,
-  exportI18nBatchApi,
-  fetchAllI18nLocalesApi,
   fetchI18nLocaleListApi,
   fetchI18nTranslationKeyListApi,
   fetchI18nTranslationListApi,
 } from '#/api/system/i18n';
+import {
+  useBatchI18nLocale,
+  useBatchI18nTranslation,
+  useDeleteI18nTranslation,
+  useExportI18nBatch,
+} from '#/api/system/i18n/hooks';
 import {
   useLocaleColumns,
   useLocaleSearchSchema,
@@ -85,6 +86,27 @@ const translationDrawerOpen = ref(false);
 // 字典驱动：locale_default / translation_status 走 useDictLookups，
 // 颜色与文本由 sys_default_status / sys_switch_status 字典供给。
 const dictLookups = useDictLookups();
+
+// mutation hooks：对齐 role/menu index.vue 的分层（裸 API 列表 + hooks mutation）
+const deleteTranslationMut = useDeleteI18nTranslation({
+  onSuccess: () => message.success('删除成功'),
+  onError: (err: Error) =>
+    message.error(`删除失败：${err.message ?? '未知错误'}`),
+});
+const batchLocaleMut = useBatchI18nLocale({
+  onSuccess: (_res, vars) => message.success(BULK_SUCCESS_TEXT[vars.action]),
+  onError: (err: Error) =>
+    message.error(`批量操作失败：${err.message ?? '未知错误'}`),
+});
+const batchTranslationMut = useBatchI18nTranslation({
+  onSuccess: (_res, vars) => message.success(BULK_SUCCESS_TEXT[vars.action]),
+  onError: (err: Error) =>
+    message.error(`批量操作失败：${err.message ?? '未知错误'}`),
+});
+const exportBatchMut = useExportI18nBatch({
+  onError: (err: Error) =>
+    message.error(`导出失败：${err.message ?? '未知错误'}`),
+});
 
 const localeColumns: ReturnType<typeof useLocaleColumns> = useLocaleColumns();
 
@@ -260,6 +282,9 @@ async function ensureChildRows(row: I18nTranslationKey) {
   if (childRowsByKey.value[row.translationKey]) return;
   childLoadingKey.value = row.translationKey;
   try {
+    // byKey 接口返回精简 values（缺 translationKey/updatedAt），无法满足子表
+    // 编辑与展示，仍需完整 I18nTranslation 行。后端暂无「按 key 取完整翻译行」
+    // 接口，故保留全量拉取 + 前端 filter；待后端补字段后可切 byKey 消除 N+1。
     const res = await fetchI18nTranslationListApi({
       page: 1,
       pageSize: 1000,
@@ -292,20 +317,21 @@ async function onExpandRowChange(payload: {
 }
 
 async function deleteChildRow(parentKey: string, row: I18nTranslation) {
-  try {
-    await deleteI18nTranslationApi(row.id);
-    message.success('删除成功');
-    childRowsByKey.value = {
-      ...childRowsByKey.value,
-      [parentKey]: (childRowsByKey.value[parentKey] ?? []).filter(
-        (it) => it.id !== row.id,
-      ),
-    };
-    // 主行 localeCount 也变了 -> reload 主表
-    translationKeyGridApi.reload();
-  } catch (error) {
-    message.error(`删除失败：${(error as Error).message ?? '未知错误'}`);
-  }
+  await deleteTranslationMut.mutateAsync(row.id);
+  childRowsByKey.value = {
+    ...childRowsByKey.value,
+    [parentKey]: (childRowsByKey.value[parentKey] ?? []).filter(
+      (it) => it.id !== row.id,
+    ),
+  };
+  // 主行 localeCount 也变了 -> reload 主表
+  translationKeyGridApi.reload();
+}
+
+// 双表视图（collapsed view）的行删除：走 mutation hook，避免模板内联裸 API
+async function deleteTranslationRow(row: I18nTranslation) {
+  await deleteTranslationMut.mutateAsync(row.id);
+  translationGridApi.reload();
 }
 
 function editChildRow(row: I18nTranslation) {
@@ -375,16 +401,13 @@ async function bulkLocaleAction(action: BulkAction) {
   }
   bulkLoading.value.locale = true;
   try {
-    await batchI18nLocaleApi({ action, ids });
-    message.success(BULK_SUCCESS_TEXT[action]);
+    await batchLocaleMut.mutateAsync({ action, ids });
     localeSelectedIds.value = new Set();
     localeGridApi.grid?.clearCheckboxRow?.();
     localeGridApi.reload();
     if (action === 'delete' && selectedLocaleId.value !== null) {
       clearTranslationSelection();
     }
-  } catch (error) {
-    message.error(`批量操作失败：${(error as Error).message ?? '未知错误'}`);
   } finally {
     bulkLoading.value.locale = false;
   }
@@ -398,20 +421,13 @@ async function bulkTranslationAction(action: BulkAction) {
   }
   bulkLoading.value.translation = true;
   try {
-    await batchI18nTranslationApi({ action, ids });
-    message.success(BULK_SUCCESS_TEXT[action]);
+    await batchTranslationMut.mutateAsync({ action, ids });
     translationSelectedIds.value = new Set();
     translationGridApi.grid?.clearCheckboxRow?.();
     translationGridApi.reload();
-  } catch (error) {
-    message.error(`批量操作失败：${(error as Error).message ?? '未知错误'}`);
   } finally {
     bulkLoading.value.translation = false;
   }
-}
-
-function openImportModal() {
-  importModalOpen.value = true;
 }
 
 function openExportModal() {
@@ -422,27 +438,30 @@ function openExportModal() {
   exportModalOpen.value = true;
 }
 
+function openImportModal() {
+  importModalOpen.value = true;
+}
+
 async function confirmExport() {
   const ids = [...localeSelectedIds.value];
-  try {
-    const data = await exportI18nBatchApi({ ids, format: exportType.value });
-    const zip = new JSZip();
-    for (const file of data.files) {
-      const filename = `${file.code}.${file.format}.json`;
-      zip.file(filename, JSON.stringify(file.content, null, 2));
-    }
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `i18n-export-${exportType.value}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-    message.success(`导出成功：${data.files.length} 个语言已打包下载`);
-    exportModalOpen.value = false;
-  } catch (error: any) {
-    message.error(`导出失败：${error.message ?? '未知错误'}`);
+  const data = await exportBatchMut.mutateAsync({
+    ids,
+    format: exportType.value,
+  });
+  const zip = new JSZip();
+  for (const file of data.files) {
+    const filename = `${file.code}.${file.format}.json`;
+    zip.file(filename, JSON.stringify(file.content, null, 2));
   }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `i18n-export-${exportType.value}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+  message.success(`导出成功：${data.files.length} 个语言已打包下载`);
+  exportModalOpen.value = false;
 }
 
 function onImportSuccess() {
@@ -450,15 +469,6 @@ function onImportSuccess() {
   translationGridApi.reload();
   translationKeyGridApi.reload();
 }
-
-onMounted(async () => {
-  // 预热默认语言的全量翻译 key, 让新建翻译时去重校验有数据可用
-  try {
-    await fetchAllI18nLocalesApi({ status: 1 });
-  } catch {
-    // 静默失败：drawer 打开时再尝试
-  }
-});
 
 /* 子表列（主行展开后显示）—— antdv-next Table 用 key/title/bodyCell 插槽 */
 const childColumns = [
@@ -809,14 +819,7 @@ function formatUpdatedAt(value: string | undefined): string {
                     type="link"
                     size="small"
                     danger
-                    @click="
-                      deleteI18nTranslationApi(row.id)
-                        .then(() => translationGridApi.reload())
-                        .then(() => message.success('删除成功'))
-                        .catch((err: Error) =>
-                          message.error(`删除失败：${err.message}`),
-                        )
-                    "
+                    @click="deleteTranslationRow(row)"
                   >
                     删除
                   </Button>
