@@ -38,12 +38,20 @@ const drawerData = ref<{
 }>({ mode: 'create' });
 
 const treeData = ref<Array<SysMenu & { children?: SysMenu[] }>>([]);
+/** 最外层根节点数（驱动分页） */
 const total = ref(0);
+/** 筛选范围内的菜单条数（仅展示） */
+const itemTotal = ref(0);
+const isExpanded = ref(false);
 
-async function loadTree(formValues: Record<string, any> = {}) {
+async function loadTree(
+  page: { currentPage: number; pageSize: number },
+  formValues: Record<string, any> = {},
+) {
+  // 后端按「最外层根」分页：pageSize=20 表示 20 个根；items 为这些根下的完整子树
   const res = await fetchMenuListApi({
-    page: 1,
-    pageSize: 100,
+    page: page.currentPage,
+    pageSize: page.pageSize,
     name: formValues.name || undefined,
     type: formValues.type || undefined,
     permissionCode: formValues.permissionCode || undefined,
@@ -51,6 +59,8 @@ async function loadTree(formValues: Record<string, any> = {}) {
   });
   treeData.value = buildMenuTree(res.items);
   total.value = res.total;
+  itemTotal.value = res.itemTotal ?? 0;
+  isExpanded.value = false;
 }
 
 const deleteMut = useDeleteMenu({
@@ -72,8 +82,6 @@ const toggleMut = useUpdateMenu({
   onError: (err: Error) =>
     message.error(`操作失败：${err.message ?? '未知错误'}`),
 });
-
-const isExpanded = ref(false);
 
 async function toggleExpandAll() {
   if (isExpanded.value) {
@@ -106,10 +114,28 @@ const [Grid, gridApi] = useVbenVxeGrid<SysMenu>({
       refresh: true,
       zoom: true,
     },
+    // 启用分页；total 为根节点数。Total 区展示「根 + 条数」
+    pagerConfig: {
+      layouts: [
+        'Total',
+        'Sizes',
+        'PrevJump',
+        'PrevPage',
+        'Number',
+        'NextPage',
+        'NextJump',
+      ],
+      slots: {
+        total: () => `共 ${total.value} 个根菜单，${itemTotal.value} 条数据`,
+      },
+    },
     proxyConfig: {
       ajax: {
-        query: async (_params: unknown, formValues: Record<string, any>) => {
-          await loadTree(formValues);
+        query: async (
+          { page }: { page: { currentPage: number; pageSize: number } },
+          formValues: Record<string, any>,
+        ) => {
+          await loadTree(page, formValues);
           return { items: treeData.value, total: total.value };
         },
       },

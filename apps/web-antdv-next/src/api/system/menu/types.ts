@@ -79,5 +79,11 @@ export interface MenuBindApiItem {
 
 export interface PageResult<T> {
   items: T[];
+  /** 分页总数：菜单管理为「最外层根节点数」 */
   total: number;
+  /**
+   * 菜单条数（筛选范围内完整子树合计）。
+   * 仅按根分页接口会返回；普通分页可不传。
+   */
+  itemTotal?: number;
 }
