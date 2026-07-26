@@ -87,7 +87,7 @@ export function useApiSearchSchema(): VbenFormProps['schema'] {
       component: 'Input',
       fieldName: 'path',
       label: '路径',
-      componentProps: { placeholder: '如 /api/admin/users' },
+      componentProps: { placeholder: '如 /api/system/user/list' },
     },
     {
       component: 'Select',
@@ -149,14 +149,14 @@ export function useApiFormSchema(): VbenFormProps['schema'] {
       fieldName: 'path',
       label: '路径',
       rules: z.string().min(1, '请输入路径'),
-      componentProps: { placeholder: '如 /api/admin/users/:id' },
+      componentProps: { placeholder: '如 /api/system/user/:id' },
     },
     {
       component: 'Input',
       fieldName: 'permissionCode',
       label: '权限码',
       rules: z.string().min(1, '请输入权限码'),
-      componentProps: { placeholder: '如 admin:user:list' },
+      componentProps: { placeholder: '如 system:user:list' },
     },
     {
       component: 'Textarea',
@@ -176,7 +176,8 @@ export function useApiFormSchema(): VbenFormProps['schema'] {
 
 /* ============================================================
  * 按 apiGroup 合成分组树（供 vxe-grid 树形折叠）
- * 空分组名归为「未分组」；仅在当前查询结果内组树，不跨页拼组。
+ * 空分组名归为「未分组」。
+ * 列表接口按「分组」分页：list 应已是当前页各组的完整接口集合。
  * ============================================================ */
 export function buildApiGroupTree(list: SysApi[]): ApiTreeNode[] {
   const groups = new Map<string, SysApi[]>();
