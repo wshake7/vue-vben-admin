@@ -31,14 +31,20 @@ const drawerData = ref<{ row?: SysApi }>({});
 const syncLoading = ref(false);
 
 const treeData = ref<ApiTreeNode[]>([]);
+/** 分组总数（驱动分页） */
 const total = ref(0);
+/** 筛选后的接口条数（仅展示） */
+const itemTotal = ref(0);
 const isExpanded = ref(false);
 
-async function loadTree(formValues: Record<string, any> = {}) {
-  // 对齐菜单：一次拉较大页，前端按 apiGroup 组树；树仅在当前查询结果内生效
+async function loadTree(
+  page: { currentPage: number; pageSize: number },
+  formValues: Record<string, any> = {},
+) {
+  // 后端按「分组」分页：pageSize=20 表示 20 个分组；items 为这些组下的全部接口
   const res = await fetchApiListApi({
-    page: 1,
-    pageSize: 100,
+    page: page.currentPage,
+    pageSize: page.pageSize,
     name: formValues.name || undefined,
     path: formValues.path || undefined,
     method: formValues.method || undefined,
@@ -47,6 +53,7 @@ async function loadTree(formValues: Record<string, any> = {}) {
   });
   treeData.value = buildApiGroupTree(res.items);
   total.value = res.total;
+  itemTotal.value = res.itemTotal ?? 0;
   isExpanded.value = false;
 }
 
@@ -109,10 +116,29 @@ const [Grid, gridApi] = useVbenVxeGrid<ApiTreeNode>({
       refresh: true,
       zoom: true,
     },
+    // 启用分页；total 为分组数。Total 区展示「分组 + 条数」（与 Sizes 同处分页条）
+    pagerConfig: {
+      layouts: [
+        'Total',
+        'Sizes',
+        'PrevJump',
+        'PrevPage',
+        'Number',
+        'NextPage',
+        'NextJump',
+      ],
+      slots: {
+        total: () => `共 ${total.value} 个分组，${itemTotal.value} 条数据`,
+      },
+    },
     proxyConfig: {
       ajax: {
-        query: async (_params: unknown, formValues: Record<string, any>) => {
-          await loadTree(formValues);
+        query: async (
+          { page }: { page: { currentPage: number; pageSize: number } },
+          formValues: Record<string, any>,
+        ) => {
+          await loadTree(page, formValues);
+          // total 为分组数；items 为当前页分组树节点
           return { items: treeData.value, total: total.value };
         },
       },
