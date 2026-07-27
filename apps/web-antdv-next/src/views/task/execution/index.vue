@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { TaskExecution } from '#/api/system/task-execution';
 
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
@@ -18,6 +18,7 @@ import {
   useExecutionSearchSchema,
 } from '#/views/task/execution/data';
 import ExecutionDetail from '#/views/task/execution/modules/detail.vue';
+import { onTaskExecutionChanged } from '#/views/task/modules/events';
 
 defineOptions({ name: 'TaskExecutionPanel' });
 
@@ -96,6 +97,8 @@ const [Grid, gridApi] = useVbenVxeGrid<TaskExecution>({
   } as never,
 });
 
+let stopExecutionListener: (() => void) | undefined;
+
 onMounted(async () => {
   try {
     const res = await fetchTaskConfigListApi({ page: 1, pageSize: 200 });
@@ -118,6 +121,16 @@ onMounted(async () => {
   } catch {
     // 下拉失败不影响列表
   }
+
+  // 配置 Tab 触发成功后刷新本表（双 Tab keep-alive）
+  stopExecutionListener = onTaskExecutionChanged(() => {
+    void gridApi.reload();
+  });
+});
+
+onBeforeUnmount(() => {
+  stopExecutionListener?.();
+  stopExecutionListener = undefined;
 });
 </script>
 

@@ -24,6 +24,7 @@ import {
   useConfigSearchSchema,
 } from '#/views/task/config/data';
 import ConfigForm from '#/views/task/config/modules/form.vue';
+import { notifyTaskExecutionChanged } from '#/views/task/modules/events';
 
 defineOptions({ name: 'TaskConfigPanel' });
 
@@ -128,6 +129,8 @@ async function handleTrigger(row: TaskConfig) {
   try {
     await triggerTaskConfigApi(row.id);
     message.success($t('task.config.triggerOk'));
+    // 通知执行记录 Tab 重新拉数（force-render keep-alive 下不会自动刷新）
+    notifyTaskExecutionChanged();
     await gridApi.reload();
   } catch {
     // 禁用触发等业务错误由 interceptor 展示 mock 文案
@@ -173,6 +176,7 @@ async function bulkAction(action: TaskConfigBatchAction) {
       } else {
         message.success($t('task.config.bulkOk'));
       }
+      notifyTaskExecutionChanged();
     } else {
       message.success($t('task.config.bulkOk'));
     }
