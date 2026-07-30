@@ -5,11 +5,18 @@ export namespace AuthApi {
   export interface LoginParams {
     password?: string;
     username?: string;
+    /** ALTCHA PoW payload（Base64） */
+    altcha?: string;
   }
 
-  /** 登录接口返回值（sa-token 单 token，字段名仍为 accessToken） */
+  /** 登录接口返回值（sa-token 单 token + 用户摘要） */
   export interface LoginResult {
     accessToken: string;
+    id?: number | string;
+    username?: string;
+    realName?: string;
+    roles?: string[];
+    homePath?: string;
   }
 }
 
