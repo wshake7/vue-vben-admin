@@ -19,7 +19,7 @@ const hmrKeyRe = /^runtimeConfig\.|routeRules\./;
 /**
  * 将 $/xxx 形式的路径解析为 <外层 monorepo 根>/xxx
  * 例如 findMonorepoRoot() 指向 vue-vben-admin 时，$/apps/backend-mock-template
- * 会解析到 trellis-demo/apps/backend-mock-template
+ * 会解析到 <外层 monorepo 根>/apps/backend-mock-template
  */
 function resolveDollarPath(p: string): string {
   const outerRoot = join(findMonorepoRoot(), '..', '..');
