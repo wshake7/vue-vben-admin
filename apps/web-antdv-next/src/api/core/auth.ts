@@ -1,4 +1,6 @@
-import { requestClient } from '#/api/request';
+import { useAccessStore } from '@vben/stores';
+
+import { baseRequestClient, requestClient } from '#/api/request';
 
 export namespace AuthApi {
   /** 登录接口参数 */
@@ -28,10 +30,17 @@ export async function loginApi(data: AuthApi.LoginParams) {
 }
 
 /**
- * 退出登录（走 requestClient，自动携带 Authorization: Bearer）
+ * 退出登录
+ *
+ * 必须走 baseRequestClient（无 401 重认证拦截器）。
+ * 若走 requestClient，logout 自身 401 会再次触发 doReAuthenticate → 死循环。
  */
 export async function logoutApi() {
-  return requestClient.post('/auth/logout');
+  const accessStore = useAccessStore();
+  const token = accessStore.accessToken;
+  return baseRequestClient.post('/auth/logout', null, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
 }
 
 /**

@@ -77,11 +77,21 @@ export const useAuthStore = defineStore('auth', () => {
     };
   }
 
-  async function logout(redirect: boolean = true) {
-    try {
-      await logoutApi();
-    } catch {
-      // 不做任何处理
+  /**
+   * 退出登录
+   * @param redirect 是否带 redirect 回跳参数
+   * @param options.skipApi 为 true 时跳过服务端 logout（用于 401 重认证：会话已失效，再调会二次 401）
+   */
+  async function logout(
+    redirect: boolean = true,
+    options: { skipApi?: boolean } = {},
+  ) {
+    if (!options.skipApi) {
+      try {
+        await logoutApi();
+      } catch {
+        // 服务端登出失败不影响本地清理
+      }
     }
     resetAllStores();
     accessStore.setLoginExpired(false);

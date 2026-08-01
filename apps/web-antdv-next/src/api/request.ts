@@ -27,20 +27,32 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
 
   /**
    * 重新认证逻辑（sa-token 单 token：401 后直接登出 / 弹窗重新登录）
+   *
+   * - 单飞锁：并发 401 只处理一次，避免风暴
+   * - skipApi：会话已 401，再调 /auth/logout 会二次 401 并死循环
    */
+  let reAuthPromise: null | Promise<void> = null;
   async function doReAuthenticate() {
-    console.warn('Access token is invalid or expired.');
-    const accessStore = useAccessStore();
-    const authStore = useAuthStore();
-    accessStore.setAccessToken(null);
-    if (
-      preferences.app.loginExpiredMode === 'modal' &&
-      accessStore.isAccessChecked
-    ) {
-      accessStore.setLoginExpired(true);
-    } else {
-      await authStore.logout();
+    if (reAuthPromise) {
+      return reAuthPromise;
     }
+    reAuthPromise = (async () => {
+      console.warn('Access token is invalid or expired.');
+      const accessStore = useAccessStore();
+      const authStore = useAuthStore();
+      accessStore.setAccessToken(null);
+      if (
+        preferences.app.loginExpiredMode === 'modal' &&
+        accessStore.isAccessChecked
+      ) {
+        accessStore.setLoginExpired(true);
+      } else {
+        await authStore.logout(true, { skipApi: true });
+      }
+    })().finally(() => {
+      reAuthPromise = null;
+    });
+    return reAuthPromise;
   }
 
   function formatToken(token: null | string) {
