@@ -5,8 +5,11 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
+import { message } from 'antdv-next';
+
 import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
+import { clearAccessMenusCache } from '#/utils/menu-cache';
 
 import { generateAccess } from './access';
 
@@ -92,30 +95,48 @@ function setupAccessGuard(router: Router) {
 
     // 生成路由表
     // 当前登录用户拥有的角色标识列表
-    const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
-    const userRoles = userInfo.roles ?? [];
+    try {
+      const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+      const userRoles = userInfo.roles ?? [];
 
-    // 生成菜单和路由
-    const { accessibleMenus, accessibleRoutes } = await generateAccess({
-      roles: userRoles,
-      router,
-      // 则会在菜单中显示，但是访问会被重定向到403
-      routes: accessRoutes,
-    });
+      // 生成菜单和路由
+      const { accessibleMenus, accessibleRoutes } = await generateAccess({
+        roles: userRoles,
+        router,
+        // 则会在菜单中显示，但是访问会被重定向到403
+        routes: accessRoutes,
+      });
 
-    // 保存菜单信息和路由信息
-    accessStore.setAccessMenus(accessibleMenus);
-    accessStore.setAccessRoutes(accessibleRoutes);
-    accessStore.setIsAccessChecked(true);
-    const redirectPath = (from.query.redirect ??
-      (to.path === preferences.app.defaultHomePath
-        ? userInfo.homePath || preferences.app.defaultHomePath
-        : to.fullPath)) as string;
+      // 保存菜单信息和路由信息
+      accessStore.setAccessMenus(accessibleMenus);
+      accessStore.setAccessRoutes(accessibleRoutes);
+      accessStore.setIsAccessChecked(true);
+      const redirectPath = (from.query.redirect ??
+        (to.path === preferences.app.defaultHomePath
+          ? userInfo.homePath || preferences.app.defaultHomePath
+          : to.fullPath)) as string;
 
-    return {
-      ...router.resolve(decodeURIComponent(redirectPath)),
-      replace: true,
-    };
+      return {
+        ...router.resolve(decodeURIComponent(redirectPath)),
+        replace: true,
+      };
+    } catch (error) {
+      // /menu/all 失败且无本 token 缓存：禁止进入，停进度条，回登录
+      console.error('[setupAccessGuard] generateAccess failed:', error);
+      if (preferences.transition.progress) {
+        stopProgress();
+      }
+      message.error('菜单加载失败，请重新登录');
+      clearAccessMenusCache();
+      accessStore.setAccessToken(null);
+      accessStore.setIsAccessChecked(false);
+      accessStore.setAccessMenus([]);
+      accessStore.setAccessRoutes([]);
+      return {
+        path: LOGIN_PATH,
+        replace: true,
+      };
+    }
   });
 }
 

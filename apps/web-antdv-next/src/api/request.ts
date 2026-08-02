@@ -32,6 +32,7 @@ import {
   generateAesKey,
   rsaEncrypt,
 } from '#/utils/crypto';
+import { clearAccessMenusCache } from '#/utils/menu-cache';
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
@@ -175,6 +176,8 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       const accessStore = useAccessStore();
       const authStore = useAuthStore();
       accessStore.setAccessToken(null);
+      // token 失效时清菜单缓存，避免过期会话菜单残留到下次登录
+      clearAccessMenusCache();
       if (
         preferences.app.loginExpiredMode === 'modal' &&
         accessStore.isAccessChecked

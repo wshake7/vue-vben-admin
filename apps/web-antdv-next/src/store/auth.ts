@@ -12,6 +12,7 @@ import { defineStore } from 'pinia';
 
 import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
 import { $t } from '#/locales';
+import { clearAccessMenusCache } from '#/utils/menu-cache';
 
 export const useAuthStore = defineStore('auth', () => {
   const accessStore = useAccessStore();
@@ -95,6 +96,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
     resetAllStores();
     accessStore.setLoginExpired(false);
+    // 必须清菜单缓存，避免新登录误用上一会话 menu
+    clearAccessMenusCache();
 
     // 回登录页带上当前路由地址
     await router.replace({
