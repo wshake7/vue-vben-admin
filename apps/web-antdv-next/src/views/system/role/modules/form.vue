@@ -165,7 +165,7 @@ async function save() {
               v-model:value="model.code"
               :maxlength="64"
               :disabled="isEdit"
-              placeholder="如 super_admin"
+              placeholder="如 operator"
             />
           </FormItem>
         </div>

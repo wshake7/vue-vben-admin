@@ -39,7 +39,7 @@ export function useRoleSearchSchema(): Array<{
       component: 'Input',
       fieldName: 'code',
       label: '编码',
-      componentProps: { placeholder: '如 super_admin' },
+      componentProps: { placeholder: '如 operator' },
     },
     {
       component: 'Input',
