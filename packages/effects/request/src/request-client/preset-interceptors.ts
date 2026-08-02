@@ -43,6 +43,15 @@ export const defaultResponseInterceptor = ({
   };
 };
 
+/** 登录等未持 token 的鉴权接口：业务 401 不是会话过期，不应 forceLogout */
+function isUnauthenticatedAuthRequest(error: {
+  config?: { url?: string };
+  response?: { config?: { url?: string } };
+}): boolean {
+  const url = error?.config?.url ?? error?.response?.config?.url ?? '';
+  return typeof url === 'string' && url.includes('/auth/login');
+}
+
 /**
  * 认证失败拦截器（sa-token 单 token 模式）
  * 401 时直接重新认证 / 登出，不做客户端 refresh 与队列重试
@@ -57,6 +66,10 @@ export const authenticateResponseInterceptor = ({
       const { response } = error;
       // 非 401 直接抛出
       if (response?.status !== 401) {
+        throw error;
+      }
+      // 登录失败本身会返回 401：只交给错误消息拦截器提示，不触发登出
+      if (isUnauthenticatedAuthRequest(error)) {
         throw error;
       }
       // 单 token：无 refresh 流程，直接重新登录

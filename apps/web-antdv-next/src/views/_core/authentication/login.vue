@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { VbenFormSchema } from '@vben/common-ui';
+import type { Recordable } from '@vben/types';
 
-import { computed, markRaw } from 'vue';
+import { computed, markRaw, ref } from 'vue';
 
 import { AuthenticationLogin, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -12,6 +13,15 @@ import { useAuthStore } from '#/store';
 defineOptions({ name: 'Login' });
 
 const authStore = useAuthStore();
+/** AuthenticationLogin expose 的 getFormApi，用于失败后清 altcha */
+const loginRef = ref<null | {
+  getFormApi: () => {
+    getFieldComponentRef?: (
+      field: string,
+    ) => undefined | { reset?: () => void };
+    setFieldValue?: (field: string, value: unknown) => void;
+  };
+}>(null);
 
 const formSchema = computed((): VbenFormSchema[] => {
   return [
@@ -46,12 +56,33 @@ const formSchema = computed((): VbenFormSchema[] => {
     },
   ];
 });
+
+/** 登录失败：payload 已被服务端一次性消费，必须重新勾选验证 */
+function resetAltcha() {
+  const formApi = loginRef.value?.getFormApi?.();
+  if (!formApi) return;
+  formApi.setFieldValue?.('altcha', '');
+  const altchaComp = formApi.getFieldComponentRef?.('altcha') as
+    | undefined
+    | { reset?: () => void };
+  altchaComp?.reset?.();
+}
+
+async function handleLogin(values: Recordable<any>) {
+  try {
+    await authStore.authLogin(values);
+  } catch {
+    // 错误提示由 request 拦截器处理；失败后强制重新人机校验
+    resetAltcha();
+  }
+}
 </script>
 
 <template>
   <AuthenticationLogin
+    ref="loginRef"
     :form-schema="formSchema"
     :loading="authStore.loginLoading"
-    @submit="authStore.authLogin"
+    @submit="handleLogin"
   />
 </template>

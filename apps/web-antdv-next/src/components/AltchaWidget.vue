@@ -10,6 +10,8 @@
  *   component: markRaw(AltchaWidget),
  *   componentProps: { challenge: '/api/altcha/challenge' },
  *   rules: z.string().min(1, ...)
+ *
+ * 登录失败后可调用 expose 的 reset()，清空勾选并重新拉取 challenge。
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
@@ -30,7 +32,11 @@ const emit = defineEmits<{
 }>();
 
 const host = ref<HTMLDivElement>();
-let widget: HTMLElement | null = null;
+let widget:
+  | (HTMLElement & {
+      reset?: (newState?: string, err?: null | string) => void;
+    })
+  | null = null;
 
 type AltchaState =
   | 'code'
@@ -57,10 +63,20 @@ function onStateChange(ev: Event) {
   }
 }
 
+/** 重置为未验证：清空表单字段并让 widget 重新拉 challenge */
+function reset() {
+  emit('update:modelValue', '');
+  widget?.reset?.('unverified');
+}
+
+defineExpose({ reset });
+
 onMounted(() => {
   const el = host.value;
   if (!el) return;
-  widget = document.createElement('altcha-widget');
+  widget = document.createElement('altcha-widget') as NonNullable<
+    typeof widget
+  >;
   widget.setAttribute('language', props.language);
   widget.setAttribute('challenge', props.challenge);
   // hideLogo/hideFooter 不是 HTML 属性，需走 configuration JSON
