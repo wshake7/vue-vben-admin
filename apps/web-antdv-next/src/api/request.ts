@@ -3,6 +3,8 @@
  */
 import type { RequestClientOptions } from '@vben/request';
 
+import type { RequestSecurityDeps } from '#/api/security';
+
 import { useAppConfig } from '@vben/hooks';
 import { preferences } from '@vben/preferences';
 import {
@@ -15,9 +17,141 @@ import { useAccessStore } from '@vben/stores';
 
 import { message } from 'antdv-next';
 
+import {
+  applyRequestSecurity,
+  decryptResponseData,
+  ensurePublicKey,
+  getPublicCryptoKey,
+  getSecurityFlags,
+  isResponseEncrypted,
+} from '#/api/security';
 import { useAuthStore } from '#/store';
+import {
+  aesDecrypt,
+  aesEncrypt,
+  generateAesKey,
+  rsaEncrypt,
+} from '#/utils/crypto';
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
+
+type AxiosConfigLike = {
+  /** 本请求 AES 会话密钥，挂在 config 上避免并发竞态 */
+  _aesKey?: CryptoKey | null;
+  baseURL?: string;
+  data?: unknown;
+  headers?: Record<string, unknown>;
+  meta?: { skipEncrypt?: boolean };
+  method?: string;
+  params?: Record<string, unknown> | string | URLSearchParams;
+  responseType?: string;
+  transformRequest?: unknown;
+  url?: string;
+};
+
+function createSecurityDeps(): RequestSecurityDeps {
+  return {
+    aesEncrypt,
+    aesDecrypt,
+    generateAesKey,
+    rsaEncrypt,
+    ensurePublicKey: () => ensurePublicKey(apiURL),
+    getPublicCryptoKey,
+  };
+}
+
+/**
+ * 注入请求安全协议（Timestamp / Encrypt / Nonce·Request-ID / Sign / Language）。
+ * requestClient 与 baseRequestClient 共用，保证 logout 等裸客户端在 Encrypt 开时也可通。
+ */
+function attachSecurityInterceptors(client: RequestClient) {
+  const deps = createSecurityDeps();
+
+  client.addRequestInterceptor({
+    fulfilled: async (config) => {
+      const cfg = config as AxiosConfigLike;
+      const flags = getSecurityFlags();
+      const contentType =
+        typeof cfg.headers?.['Content-Type'] === 'string'
+          ? (cfg.headers['Content-Type'] as string)
+          : typeof cfg.headers?.['content-type'] === 'string'
+            ? (cfg.headers['content-type'] as string)
+            : null;
+
+      const secured = await applyRequestSecurity(
+        {
+          baseURL: cfg.baseURL ?? apiURL,
+          data: cfg.data,
+          headers: cfg.headers as Record<string, unknown> | undefined,
+          method: cfg.method,
+          params: cfg.params,
+          meta: cfg.meta,
+          url: cfg.url,
+          contentType,
+          language: preferences.app.locale,
+        },
+        flags,
+        deps,
+      );
+
+      cfg.headers = secured.headers as typeof cfg.headers;
+      cfg.data = secured.data;
+      cfg._aesKey = secured.aesKey ?? null;
+
+      if (secured.responseType) {
+        cfg.responseType = secured.responseType;
+      }
+      if (secured.rawBody) {
+        // 加密 body 已是 base64 字符串，禁止 axios 再 JSON 序列化成带引号字符串
+        cfg.transformRequest = [(data: unknown) => data];
+        if (cfg.headers) {
+          cfg.headers['Content-Type'] = 'application/json';
+        }
+      }
+
+      return config;
+    },
+  });
+
+  client.addResponseInterceptor({
+    fulfilled: async (response) => {
+      const cfg = response.config as AxiosConfigLike;
+      const decrypted = await decryptResponseData(
+        {
+          data: response.data,
+          isEncrypted: isResponseEncrypted(
+            response.headers as Record<string, unknown>,
+          ),
+          aesKey: cfg._aesKey,
+        },
+        deps,
+      );
+      response.data = decrypted;
+      return response;
+    },
+    rejected: async (error: unknown) => {
+      const err = error as {
+        response?: {
+          config?: AxiosConfigLike;
+          data?: unknown;
+          headers?: Record<string, unknown>;
+        };
+      };
+      if (err?.response) {
+        const cfg = err.response.config;
+        err.response.data = await decryptResponseData(
+          {
+            data: err.response.data,
+            isEncrypted: isResponseEncrypted(err.response.headers),
+            aesKey: cfg?._aesKey,
+          },
+          deps,
+        );
+      }
+      throw error;
+    },
+  });
+}
 
 function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   const client = new RequestClient({
@@ -59,7 +193,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     return token ? `Bearer ${token}` : null;
   }
 
-  // 请求头处理
+  // 请求头处理（鉴权 + Accept-Language）
   client.addRequestInterceptor({
     fulfilled: async (config) => {
       // public 端点不需要登录态
@@ -72,7 +206,10 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     },
   });
 
-  // 处理返回的响应数据格式
+  // 请求安全：Timestamp / Encrypt / Nonce / Sign / X-Language
+  attachSecurityInterceptors(client);
+
+  // 处理返回的响应数据格式（须在解密拦截器之后）
   client.addResponseInterceptor(
     defaultResponseInterceptor({
       codeField: 'code',
@@ -107,4 +244,6 @@ export const requestClient = createRequestClient(apiURL, {
   responseReturn: 'data',
 });
 
+/** 无 401 重认证拦截器的客户端（logout 等）；仍挂载安全协议。 */
 export const baseRequestClient = new RequestClient({ baseURL: apiURL });
+attachSecurityInterceptors(baseRequestClient);
