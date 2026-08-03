@@ -9,10 +9,16 @@ import { cn } from '@vben-core/shared/utils';
 import { VbenTooltip } from '../tooltip';
 import VbenButton from './button.vue';
 
+type IconButtonClickHandler = (event?: MouseEvent) => void;
+
 interface Props extends VbenButtonProps {
   class?: any;
   disabled?: boolean;
-  onClick?: (() => void)[] | (() => void);
+  /**
+   * 点击回调。DropdownMenuTrigger as-child 会把 reka-ui 的 onClick 合成到此 prop，
+   * 必须把原生 MouseEvent 原样转发，否则 event.button 会读到 undefined 并抛错。
+   */
+  onClick?: IconButtonClickHandler | IconButtonClickHandler[];
   tooltip?: string;
   tooltipDelayDuration?: number;
   tooltipSide?: 'bottom' | 'left' | 'right' | 'top';
@@ -31,13 +37,13 @@ const slots = useSlots();
 
 const showTooltip = computed(() => !!slots.tooltip || !!props.tooltip);
 
-function handleClick() {
+function handleClick(event: MouseEvent) {
   if (Array.isArray(props.onClick)) {
     for (const fn of props.onClick) {
-      fn?.();
+      fn?.(event);
     }
   } else {
-    props.onClick?.();
+    props.onClick?.(event);
   }
 }
 </script>

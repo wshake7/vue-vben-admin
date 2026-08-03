@@ -126,14 +126,26 @@ async function loadLocaleMessages(lang: SupportedLanguagesType) {
   }
   setSimpleLocale(lang);
 
-  const message = await localesMap[lang]?.();
+  // 无论包加载/合并是否失败，最终都要切语言；否则 UI 会「点了没反应」
+  try {
+    const message = await localesMap[lang]?.();
 
-  if (message?.default) {
-    i18n.global.setLocaleMessage(lang, message.default);
+    if (message?.default) {
+      i18n.global.setLocaleMessage(lang, message.default);
+    }
+
+    const mergeMessage = await loadMessages(lang);
+    // vue-i18n deepCopy 要求 plain object；undefined/数组会抛 Invalid value
+    if (
+      mergeMessage &&
+      typeof mergeMessage === 'object' &&
+      !Array.isArray(mergeMessage)
+    ) {
+      i18n.global.mergeLocaleMessage(lang, mergeMessage);
+    }
+  } catch (error) {
+    console.error(`[i18n] Failed to load messages for "${lang}"`, error);
   }
-
-  const mergeMessage = await loadMessages(lang);
-  i18n.global.mergeLocaleMessage(lang, mergeMessage);
 
   return setI18nLanguage(lang);
 }

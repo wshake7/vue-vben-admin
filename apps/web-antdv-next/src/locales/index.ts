@@ -39,10 +39,11 @@ async function loadMessages(lang: SupportedLanguagesType) {
     loadThirdPartyMessage(lang),
   ]);
 
-  // 后台拉取后端翻译，不阻塞 UI
-  fetchBackendI18n(coreI18n, lang);
+  // 后台拉取后端翻译，不阻塞 UI（失败必须静默，不能影响切语言）
+  void fetchBackendI18n(coreI18n, lang);
 
-  return appLocaleMessages?.default;
+  // 始终返回 plain object，避免 mergeLocaleMessage(undefined) 抛 Invalid value
+  return appLocaleMessages?.default ?? {};
 }
 
 /**

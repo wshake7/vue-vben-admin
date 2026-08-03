@@ -35,9 +35,10 @@ export async function fetchBackendI18n(
 
   // 2. 请求后端 public 端点
   try {
+    // 默认 responseReturn:'data'：解包 Result.data = { unchanged, hash?, data? }
     const res = await requestClient.get<PublicI18nResponse>(
       `/public/i18n/${encodeURIComponent(locale)}`,
-      { params: { hash: cached?.hash ?? '' }, responseReturn: 'body' },
+      { params: { hash: cached?.hash ?? '' } },
     );
 
     if (!res || res.unchanged || !res.data) return;

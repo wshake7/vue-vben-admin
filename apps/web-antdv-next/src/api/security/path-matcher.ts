@@ -68,6 +68,15 @@ export function isSecurityWhitelisted(path: string): boolean {
   if (normalized === '/api/altcha' || normalized.startsWith('/api/altcha/')) {
     return true;
   }
+  // 进页/切语言拉取翻译包：免加密与独立 Sign（对齐 Java / mock）
+  if (
+    normalized === '/api/public/i18n' ||
+    normalized.startsWith('/api/public/i18n/') ||
+    normalized === '/public/i18n' ||
+    normalized.startsWith('/public/i18n/')
+  ) {
+    return true;
+  }
   if (normalized === '/api/health' || normalized.startsWith('/api/health/')) {
     return true;
   }

@@ -43,13 +43,29 @@ export const defaultResponseInterceptor = ({
   };
 };
 
+function getRequestUrl(error: {
+  config?: { url?: string };
+  response?: { config?: { url?: string } };
+}): string {
+  const url = error?.config?.url ?? error?.response?.config?.url ?? '';
+  return typeof url === 'string' ? url : '';
+}
+
 /** 登录等未持 token 的鉴权接口：业务 401 不是会话过期，不应 forceLogout */
 function isUnauthenticatedAuthRequest(error: {
   config?: { url?: string };
   response?: { config?: { url?: string } };
 }): boolean {
-  const url = error?.config?.url ?? error?.response?.config?.url ?? '';
-  return typeof url === 'string' && url.includes('/auth/login');
+  return getRequestUrl(error).includes('/auth/login');
+}
+
+/** 公开接口失败不应触发登出 / 全局错误 toast（本地 i18n 已兜底） */
+function isPublicOptionalRequest(error: {
+  config?: { url?: string };
+  response?: { config?: { url?: string } };
+}): boolean {
+  const url = getRequestUrl(error);
+  return url.includes('/public/');
 }
 
 /**
@@ -68,8 +84,11 @@ export const authenticateResponseInterceptor = ({
       if (response?.status !== 401) {
         throw error;
       }
-      // 登录失败本身会返回 401：只交给错误消息拦截器提示，不触发登出
-      if (isUnauthenticatedAuthRequest(error)) {
+      // 登录失败 / 公开可选接口 401：不触发登出
+      if (
+        isUnauthenticatedAuthRequest(error) ||
+        isPublicOptionalRequest(error)
+      ) {
         throw error;
       }
       // 单 token：无 refresh 流程，直接重新登录
@@ -85,6 +104,11 @@ export const errorMessageResponseInterceptor = (
   return {
     rejected: (error: any) => {
       if (axios.isCancel(error)) {
+        return Promise.reject(error);
+      }
+
+      // 公开可选接口（如 /public/i18n）静默失败，避免切语言时误 toast / 打断 UI
+      if (isPublicOptionalRequest(error)) {
         return Promise.reject(error);
       }
 

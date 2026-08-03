@@ -20,7 +20,12 @@ async function handleUpdate(value: string | undefined) {
       locale,
     },
   });
-  await loadLocaleMessages(locale);
+  try {
+    await loadLocaleMessages(locale);
+  } catch (error) {
+    // 保底：preferences 已更新；避免未捕获异常导致「点击无反应」
+    console.error('[LanguageToggle] failed to load locale', error);
+  }
 }
 </script>
 

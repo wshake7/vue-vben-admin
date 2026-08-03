@@ -264,7 +264,11 @@ async function handleLocaleChange(event: Event, value: 'en-US' | 'zh-CN') {
   // 阻止默认关闭，让用户能继续看到选择结果；选完手动收起
   event.preventDefault();
   updatePreferences({ app: { locale: value } });
-  await loadLocaleMessages(value);
+  try {
+    await loadLocaleMessages(value);
+  } catch (error) {
+    console.error('[UserDropdown] failed to load locale', error);
+  }
   showLanguageList.value = false;
   openPopover.value = false;
 }

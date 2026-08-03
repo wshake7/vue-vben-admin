@@ -85,6 +85,8 @@ describe('path whitelist', () => {
   it('whitelists public key and altcha, not login', () => {
     expect(isSecurityWhitelisted('/api/encrypt/public/key')).toBe(true);
     expect(isSecurityWhitelisted('/api/altcha/challenge')).toBe(true);
+    expect(isSecurityWhitelisted('/api/public/i18n/zh-CN')).toBe(true);
+    expect(isSecurityWhitelisted('/public/i18n/en-US')).toBe(true);
     expect(isSecurityWhitelisted('/api/auth/login')).toBe(false);
   });
 });
