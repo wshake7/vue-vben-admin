@@ -20,16 +20,20 @@ import { router } from './router';
 /**
  * 全局 QueryClient 单例。
  *
- * - retry: 0 — 字典类纯查询接口由调用方按需触发,失败即让 UI 显式处理,避免
- *   静默重试导致数据陈旧时仍多次请求。
- * - staleTime: 30s — 字典项 platform 维度在小会话内稳定,默认 30s 缓存
- *   减少重复请求;可通过 useQuery options.staleTime 在调用方覆盖。
+ * 缓存策略对齐 react-admin `core/query-client.ts`，避免两端切 tab / 聚焦时
+ * 出现「一侧不请求、一侧频繁 refetch」的体验差：
+ * - staleTime: 5min — 新鲜期内不重复请求
+ * - gcTime: 30min — 无订阅后保留缓存
+ * - refetchOnWindowFocus: false — 聚焦窗口不自动重拉
+ * - retry: 0 — 失败即交给 UI 显式处理，避免静默重试
  */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 0,
-      staleTime: 30_000,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
     },
   },
 });

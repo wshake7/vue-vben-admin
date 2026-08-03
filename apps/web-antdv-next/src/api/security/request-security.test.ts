@@ -174,6 +174,64 @@ describe('applyRequestSecurity', () => {
     );
   });
 
+  it('sign 模式：数组 query 只取首值进 AAD（对齐 mock/Java，修 dict-data typeCode[]）', async () => {
+    await applyRequestSecurity(
+      {
+        url: '/system/dict-data/list',
+        baseURL: '/api',
+        method: 'GET',
+        params: {
+          typeCode: ['sys_switch_status', 'sys_platform'],
+          page: 1,
+          pageSize: 20,
+          includeGeneral: true,
+          platform: 'vue-admin',
+          emptyArr: [],
+        },
+      },
+      fullFlags({ encryptEnabled: false, signEnabled: true }),
+      deps,
+    );
+
+    // 多值只取首项；不得变成 "a,b"；空数组跳过
+    const expectedAad = [
+      'X-Request-ID=nonce-fixed-1',
+      'X-Request-Timestamp=1700000000000',
+      'includeGeneral=true',
+      'page=1',
+      'pageSize=20',
+      'platform=vue-admin',
+      'typeCode=sys_switch_status',
+    ].join('&');
+    expect(deps.aesEncrypt).toHaveBeenCalledWith(
+      expect.anything(),
+      expectedAad,
+      undefined,
+    );
+  });
+
+  it('encrypt 模式：数组 query 同样只取首值进 AAD', async () => {
+    await applyRequestSecurity(
+      {
+        url: '/system/dict-data/list',
+        baseURL: '/api',
+        method: 'GET',
+        params: {
+          typeCode: ['sys_switch_status', 'sys_platform'],
+          includeGeneral: true,
+        },
+      },
+      fullFlags({ encryptEnabled: true }),
+      deps,
+    );
+
+    expect(deps.aesEncrypt).toHaveBeenCalledWith(
+      expect.anything(),
+      'X-Request-ID=nonce-fixed-1&X-Request-Timestamp=1700000000000&includeGeneral=true&typeCode=sys_switch_status',
+      undefined,
+    );
+  });
+
   it('encrypt on: public key path stays plaintext', async () => {
     const result = await applyRequestSecurity(
       {

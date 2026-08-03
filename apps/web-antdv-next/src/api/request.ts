@@ -158,6 +158,10 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   const client = new RequestClient({
     ...options,
     baseURL,
+    // 数组 query 用重复键 typeCode=a&typeCode=b，避免默认 typeCode[]= 导致
+    // 签名 AAD 的 key 与 mock/Java 解析结果不一致（1008 签名错误）。
+    // 与 security/request-security.normalizeParams（多值取首项）配套。
+    paramsSerializer: options?.paramsSerializer ?? 'repeat',
   });
 
   /**
@@ -248,5 +252,9 @@ export const requestClient = createRequestClient(apiURL, {
 });
 
 /** 无 401 重认证拦截器的客户端（logout 等）；仍挂载安全协议。 */
-export const baseRequestClient = new RequestClient({ baseURL: apiURL });
+export const baseRequestClient = new RequestClient({
+  baseURL: apiURL,
+  // 与 requestClient 一致：数组 query 重复键，避免签名 1008
+  paramsSerializer: 'repeat',
+});
 attachSecurityInterceptors(baseRequestClient);
