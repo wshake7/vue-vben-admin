@@ -11,7 +11,7 @@ export namespace AuthApi {
     altcha?: string;
   }
 
-  /** 登录接口返回值（sa-token 单 token + 用户摘要） */
+  /** 登录接口返回值（sa-token 单 token + 用户摘要 + 会话专属公钥） */
   export interface LoginResult {
     accessToken: string;
     id?: number | string;
@@ -19,6 +19,8 @@ export namespace AuthApi {
     realName?: string;
     roles?: string[];
     homePath?: string;
+    /** 会话专属 RSA 公钥（SPKI base64）；登录后客户端加密应使用此钥 */
+    publicKey?: string;
   }
 }
 

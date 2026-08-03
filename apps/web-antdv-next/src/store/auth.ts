@@ -11,6 +11,7 @@ import { notification } from 'antdv-next';
 import { defineStore } from 'pinia';
 
 import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
+import { clearCachedPublicKey, setCachedPublicKey } from '#/api/security';
 import { $t } from '#/locales';
 import { clearAccessMenusCache } from '#/utils/menu-cache';
 
@@ -34,11 +35,15 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     try {
       loginLoading.value = true;
-      const { accessToken } = await loginApi(params);
+      const { accessToken, publicKey } = await loginApi(params);
 
       // 如果成功获取到 accessToken
       if (accessToken) {
         accessStore.setAccessToken(accessToken);
+        // 登录后改用会话专属公钥（对齐 java / mock LoginResponse.publicKey）
+        if (publicKey) {
+          setCachedPublicKey(publicKey);
+        }
 
         // 获取用户信息并存储到 accessStore 中
         const [fetchUserInfoResult, accessCodes] = await Promise.all([
@@ -98,6 +103,8 @@ export const useAuthStore = defineStore('auth', () => {
     accessStore.setLoginExpired(false);
     // 必须清菜单缓存，避免新登录误用上一会话 menu
     clearAccessMenusCache();
+    // 清会话公钥，下次登录前重新走全局 /encrypt/public/key
+    clearCachedPublicKey();
 
     // 回登录页带上当前路由地址
     await router.replace({
