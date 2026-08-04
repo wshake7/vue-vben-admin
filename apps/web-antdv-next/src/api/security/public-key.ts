@@ -94,7 +94,7 @@ export function setCachedPublicKey(publicKey: string) {
  * 仅在本地无缓存（含 storage）时调用。
  */
 export async function fetchPublicKey(apiBase: string): Promise<string> {
-  const base = apiBase.replace(/\/$/, '');
+  const base = (apiBase || '/api').replace(/\/$/, '');
   const url = `${base}/encrypt/public/key`;
   const response = await fetch(url, {
     method: 'GET',
@@ -109,22 +109,44 @@ export async function fetchPublicKey(apiBase: string): Promise<string> {
   return res?.data?.publicKey || '';
 }
 
+export interface EnsurePublicKeyOptions {
+  /**
+   * 强制重新拉取全局公钥，忽略内存/storage 缓存。
+   * 用于未登录（登录页 / 重登）场景：storage 中可能残留上一会话专属公钥，
+   * 若直接复用会导致服务端用全局私钥解不开（Sign/Encrypt RSA decrypt failed）。
+   */
+  force?: boolean;
+}
+
 /**
  * 确保本地有公钥。
- * 优先：内存 → 持久化 storage →（仅皆无时）裸 fetch 全局公钥。
+ * 默认优先：内存 → 持久化 storage →（仅皆无时）裸 fetch 全局公钥。
  * 已登录刷新时不得覆盖 storage 中的会话公钥。
+ * force 时跳过缓存，始终 GET /encrypt/public/key。
  */
-export async function ensurePublicKey(apiBase: string): Promise<string> {
-  const local = hydrateFromStorage();
-  if (local) {
-    return local;
+export async function ensurePublicKey(
+  apiBase: string,
+  options?: EnsurePublicKeyOptions,
+): Promise<string> {
+  if (options?.force) {
+    // 丢弃内存缓存以便重拉；storage 在拿到新钥后再覆盖
+    cachedPublicKeyBase64 = '';
+    cachedPublicCryptoKey = null;
+  } else {
+    const local = hydrateFromStorage();
+    if (local) {
+      return local;
+    }
   }
+
   if (inflight) {
     return inflight;
   }
+
+  const base = apiBase || '/api';
   inflight = (async () => {
     try {
-      const key = await fetchPublicKey(apiBase);
+      const key = await fetchPublicKey(base);
       if (key) {
         // 登录前全局钥也写入 storage；登录成功后会被会话钥覆盖
         setCachedPublicKey(key);
@@ -137,6 +159,15 @@ export async function ensurePublicKey(apiBase: string): Promise<string> {
     }
   })();
   return inflight;
+}
+
+/**
+ * 登录前准备全局公钥：清会话残留后拉取 `/encrypt/public/key`。
+ * 与 React 登录前走全局钥一致。
+ */
+export async function prepareGlobalPublicKey(apiBase: string): Promise<string> {
+  clearCachedPublicKey();
+  return ensurePublicKey(apiBase || '/api', { force: true });
 }
 
 export async function getPublicCryptoKey(): Promise<CryptoKey | undefined> {

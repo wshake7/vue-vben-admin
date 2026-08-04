@@ -2,17 +2,25 @@
 import type { VbenFormSchema } from '@vben/common-ui';
 import type { Recordable } from '@vben/types';
 
-import { computed, markRaw, ref } from 'vue';
+import { computed, markRaw, onMounted, ref } from 'vue';
 
 import { AuthenticationLogin, z } from '@vben/common-ui';
+import { useAppConfig } from '@vben/hooks';
 import { $t } from '@vben/locales';
 
+import { prepareGlobalPublicKey } from '#/api/security';
 import AltchaWidget from '#/components/AltchaWidget.vue';
 import { useAuthStore } from '#/store';
 
 defineOptions({ name: 'Login' });
 
+const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 const authStore = useAuthStore();
+
+// 进入登录页即预拉全局公钥，避免提交时才发现密钥不可用
+onMounted(() => {
+  void prepareGlobalPublicKey(apiURL || '/api');
+});
 /** AuthenticationLogin expose 的 getFormApi，用于失败后清 altcha */
 const loginRef = ref<null | {
   getFormApi: () => {

@@ -19,6 +19,7 @@ import { message } from 'antdv-next';
 
 import {
   applyRequestSecurity,
+  clearCachedPublicKey,
   decryptResponseData,
   ensurePublicKey,
   getPublicCryptoKey,
@@ -35,6 +36,8 @@ import {
 import { clearAccessMenusCache } from '#/utils/menu-cache';
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
+/** 与 React `baseURL || '/api'` 对齐，避免 apiURL 空时请求落到错误路径 */
+const resolvedApiURL = apiURL || '/api';
 
 type AxiosConfigLike = {
   /** 本请求 AES 会话密钥，挂在 config 上避免并发竞态 */
@@ -56,7 +59,9 @@ function createSecurityDeps(): RequestSecurityDeps {
     aesDecrypt,
     generateAesKey,
     rsaEncrypt,
-    ensurePublicKey: () => ensurePublicKey(apiURL),
+    // 未登录由 authLogin/登录页 prepareGlobalPublicKey 清会话钥并预拉全局钥；
+    // 已登录走 storage 中的会话钥。apiURL 空时与 React 一样回退 /api。
+    ensurePublicKey: () => ensurePublicKey(resolvedApiURL),
     getPublicCryptoKey,
   };
 }
@@ -81,7 +86,7 @@ function attachSecurityInterceptors(client: RequestClient) {
 
       const secured = await applyRequestSecurity(
         {
-          baseURL: cfg.baseURL ?? apiURL,
+          baseURL: cfg.baseURL ?? resolvedApiURL,
           data: cfg.data,
           headers: cfg.headers as Record<string, unknown> | undefined,
           method: cfg.method,
@@ -182,6 +187,8 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       accessStore.setAccessToken(null);
       // token 失效时清菜单缓存，避免过期会话菜单残留到下次登录
       clearAccessMenusCache();
+      // 会话钥与 token 同生命周期：仅清 token 时也必须清公钥，否则重登会复用死会话钥
+      clearCachedPublicKey();
       if (
         preferences.app.loginExpiredMode === 'modal' &&
         accessStore.isAccessChecked
@@ -247,13 +254,13 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   return client;
 }
 
-export const requestClient = createRequestClient(apiURL, {
+export const requestClient = createRequestClient(resolvedApiURL, {
   responseReturn: 'data',
 });
 
 /** 无 401 重认证拦截器的客户端（logout 等）；仍挂载安全协议。 */
 export const baseRequestClient = new RequestClient({
-  baseURL: apiURL,
+  baseURL: resolvedApiURL,
   // 与 requestClient 一致：数组 query 重复键，避免签名 1008
   paramsSerializer: 'repeat',
 });

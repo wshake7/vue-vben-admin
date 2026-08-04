@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { LOGIN_PATH } from '@vben/constants';
+import { useAppConfig } from '@vben/hooks';
 import { preferences } from '@vben/preferences';
 import { resetAllStores, useAccessStore, useUserStore } from '@vben/stores';
 
@@ -11,9 +12,15 @@ import { notification } from 'antdv-next';
 import { defineStore } from 'pinia';
 
 import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
-import { clearCachedPublicKey, setCachedPublicKey } from '#/api/security';
+import {
+  clearCachedPublicKey,
+  prepareGlobalPublicKey,
+  setCachedPublicKey,
+} from '#/api/security';
 import { $t } from '#/locales';
 import { clearAccessMenusCache } from '#/utils/menu-cache';
+
+const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
 export const useAuthStore = defineStore('auth', () => {
   const accessStore = useAccessStore();
@@ -35,6 +42,8 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     try {
       loginLoading.value = true;
+      // 登录须用全局公钥：清掉可能残留的会话钥，强制 GET /encrypt/public/key（对齐 React）
+      await prepareGlobalPublicKey(apiURL || '/api');
       const { accessToken, publicKey } = await loginApi(params);
 
       // 如果成功获取到 accessToken

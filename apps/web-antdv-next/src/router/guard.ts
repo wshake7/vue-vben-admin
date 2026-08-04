@@ -7,6 +7,7 @@ import { startProgress, stopProgress } from '@vben/utils';
 
 import { message } from 'antdv-next';
 
+import { clearCachedPublicKey } from '#/api/security';
 import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
 import { clearAccessMenusCache } from '#/utils/menu-cache';
@@ -129,6 +130,8 @@ function setupAccessGuard(router: Router) {
       message.error('菜单加载失败，请重新登录');
       clearAccessMenusCache();
       accessStore.setAccessToken(null);
+      // 与 token 同步清会话公钥，避免登录页复用死会话钥
+      clearCachedPublicKey();
       accessStore.setIsAccessChecked(false);
       accessStore.setAccessMenus([]);
       accessStore.setAccessRoutes([]);

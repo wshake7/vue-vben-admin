@@ -6,6 +6,8 @@
 const WHITELIST_EXACT = new Set([
   '/api/encrypt/public/key',
   '/doc.html',
+  // 兼容 baseURL 已含 /api 时 url 为 /encrypt/public/key（对齐 React）
+  '/encrypt/public/key',
   '/error',
   '/favicon.ico',
 ]);
