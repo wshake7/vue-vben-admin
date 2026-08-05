@@ -73,6 +73,7 @@
     "unknownConfig": "—"
   },
   "status": {
+    "PENDING": "Pending",
     "RUNNING": "Running",
     "COMPLETED": "Completed",
     "FAILED": "Failed",

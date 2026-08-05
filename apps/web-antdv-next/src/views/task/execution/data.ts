@@ -7,6 +7,7 @@ export const EXECUTION_STATUS_OPTIONS: Array<{
   label: string;
   value: TaskExecutionStatus;
 }> = [
+  { label: $t('task.status.PENDING'), value: 'PENDING' },
   { label: $t('task.status.RUNNING'), value: 'RUNNING' },
   { label: $t('task.status.COMPLETED'), value: 'COMPLETED' },
   { label: $t('task.status.FAILED'), value: 'FAILED' },
@@ -17,6 +18,7 @@ export const EXECUTION_STATUS_OPTIONS: Array<{
 ];
 
 export const STATUS_TAG_COLOR: Record<string, string> = {
+  PENDING: 'default',
   RUNNING: 'processing',
   COMPLETED: 'success',
   FAILED: 'error',

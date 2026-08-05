@@ -8,6 +8,7 @@ export type TaskExecutionStatus =
   | 'COMPLETED'
   | 'CONTINUED_AS_NEW'
   | 'FAILED'
+  | 'PENDING'
   | 'RUNNING'
   | 'TERMINATED'
   | 'TIMED_OUT';

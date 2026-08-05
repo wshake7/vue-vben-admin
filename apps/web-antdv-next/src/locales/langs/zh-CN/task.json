@@ -73,6 +73,7 @@
     "unknownConfig": "—"
   },
   "status": {
+    "PENDING": "等待中",
     "RUNNING": "运行中",
     "COMPLETED": "已完成",
     "FAILED": "失败",
