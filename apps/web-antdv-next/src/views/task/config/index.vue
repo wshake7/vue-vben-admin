@@ -4,7 +4,7 @@ import type {
   TaskConfigBatchAction,
 } from '#/api/system/task-config';
 
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
@@ -15,6 +15,8 @@ import {
   batchTaskConfigApi,
   deleteTaskConfigApi,
   fetchTaskConfigListApi,
+  fetchTaskQueuesApi,
+  fetchTaskWorkflowTypesApi,
   triggerTaskConfigApi,
   updateTaskConfigApi,
 } from '#/api/system/task-config';
@@ -94,11 +96,46 @@ const [Grid, gridApi] = useVbenVxeGrid<TaskConfig>({
             code: formValues.code || undefined,
             name: formValues.name || undefined,
             status: formValues.status ?? undefined,
+            workflowType: formValues.workflowType || undefined,
+            taskQueue: formValues.taskQueue || undefined,
           });
         },
       },
     },
   } as never,
+});
+
+onMounted(async () => {
+  try {
+    const [wf, queues] = await Promise.all([
+      fetchTaskWorkflowTypesApi(),
+      fetchTaskQueuesApi(),
+    ]);
+    gridApi.formApi?.updateSchema?.([
+      {
+        fieldName: 'workflowType',
+        componentProps: {
+          options: wf ?? [],
+          allowClear: true,
+          showSearch: true,
+          optionFilterProp: 'label',
+          placeholder: $t('task.config.workflowTypeFilterPlaceholder'),
+        },
+      },
+      {
+        fieldName: 'taskQueue',
+        componentProps: {
+          options: queues ?? [],
+          allowClear: true,
+          showSearch: true,
+          optionFilterProp: 'label',
+          placeholder: $t('task.config.taskQueueFilterPlaceholder'),
+        },
+      },
+    ]);
+  } catch {
+    // 下拉失败不影响列表
+  }
 });
 
 function openCreate() {

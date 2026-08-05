@@ -39,6 +39,8 @@ export interface TaskExecutionQuery {
   status?: string | TaskExecutionStatus;
   startedAtFrom?: string;
   startedAtTo?: string;
+  /** 工作流类型精确匹配 */
+  workflowType?: string;
 }
 
 export interface PageResult<T> {

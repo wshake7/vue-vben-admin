@@ -35,6 +35,10 @@ export interface TaskConfigQuery {
   name?: string;
   /** isEnabled 0|1 */
   status?: 0 | 1;
+  /** 工作流类型精确匹配 */
+  workflowType?: string;
+  /** 任务队列精确匹配 */
+  taskQueue?: string;
 }
 
 export interface CreateTaskConfigRequest {

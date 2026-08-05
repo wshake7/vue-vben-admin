@@ -49,7 +49,10 @@ export function useConfigColumns(): VxeTableGridOptions['columns'] {
   ];
 }
 
-export function useConfigSearchSchema(): Array<{
+export function useConfigSearchSchema(
+  workflowTypeOptions: Array<{ label: string; value: string }> = [],
+  taskQueueOptions: Array<{ label: string; value: string }> = [],
+): Array<{
   component: string;
   componentProps?: Record<string, any>;
   fieldName: string;
@@ -72,6 +75,30 @@ export function useConfigSearchSchema(): Array<{
       componentProps: {
         placeholder: $t('task.config.namePlaceholder'),
         allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'workflowType',
+      label: $t('task.config.workflowType'),
+      componentProps: {
+        options: workflowTypeOptions,
+        allowClear: true,
+        showSearch: true,
+        optionFilterProp: 'label',
+        placeholder: $t('task.config.workflowTypeFilterPlaceholder'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'taskQueue',
+      label: $t('task.config.taskQueue'),
+      componentProps: {
+        options: taskQueueOptions,
+        allowClear: true,
+        showSearch: true,
+        optionFilterProp: 'label',
+        placeholder: $t('task.config.taskQueueFilterPlaceholder'),
       },
     },
     {

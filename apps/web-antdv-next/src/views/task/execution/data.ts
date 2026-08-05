@@ -101,6 +101,7 @@ export function useExecutionColumns(): VxeTableGridOptions['columns'] {
 
 export function useExecutionSearchSchema(
   configOptions: Array<{ label: string; value: number }> = [],
+  workflowTypeOptions: Array<{ label: string; value: string }> = [],
 ): Array<{
   component: string;
   componentProps?: Record<string, any>;
@@ -118,6 +119,18 @@ export function useExecutionSearchSchema(
         showSearch: true,
         optionFilterProp: 'label',
         placeholder: $t('task.execution.filterConfigPlaceholder'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'workflowType',
+      label: $t('task.execution.filterWorkflow'),
+      componentProps: {
+        options: workflowTypeOptions,
+        allowClear: true,
+        showSearch: true,
+        optionFilterProp: 'label',
+        placeholder: $t('task.execution.filterWorkflowPlaceholder'),
       },
     },
     {

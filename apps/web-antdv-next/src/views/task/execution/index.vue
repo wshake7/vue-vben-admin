@@ -8,8 +8,12 @@ import { useVbenDrawer } from '@vben/common-ui';
 import { Button, Tag } from 'antdv-next';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { fetchTaskConfigListApi } from '#/api/system/task-config';
+import {
+  fetchTaskConfigListApi,
+  fetchTaskWorkflowTypesApi,
+} from '#/api/system/task-config';
 import { fetchTaskExecutionListApi } from '#/api/system/task-execution';
+import { $t } from '#/locales';
 import {
   executionStatusLabel,
   formatDuration,
@@ -88,6 +92,7 @@ const [Grid, gridApi] = useVbenVxeGrid<TaskExecution>({
             pageSize: page.pageSize,
             configId,
             status: formValues.status || undefined,
+            workflowType: formValues.workflowType || undefined,
             startedAtFrom,
             startedAtTo,
           });
@@ -101,12 +106,15 @@ let stopExecutionListener: (() => void) | undefined;
 
 onMounted(async () => {
   try {
-    const res = await fetchTaskConfigListApi({ page: 1, pageSize: 200 });
+    const [res, workflowTypes] = await Promise.all([
+      fetchTaskConfigListApi({ page: 1, pageSize: 200 }),
+      fetchTaskWorkflowTypesApi(),
+    ]);
     configOptions.value = res.items.map((c) => ({
       label: `${c.name}（${c.code}）`,
       value: c.id,
     }));
-    // 局部更新 configId 下拉 options（schema 在 grid 初始化时已固化）
+    // 局部更新 configId / workflowType 下拉 options（schema 在 grid 初始化时已固化）
     gridApi.formApi?.updateSchema?.([
       {
         fieldName: 'configId',
@@ -115,6 +123,16 @@ onMounted(async () => {
           allowClear: true,
           showSearch: true,
           optionFilterProp: 'label',
+        },
+      },
+      {
+        fieldName: 'workflowType',
+        componentProps: {
+          options: workflowTypes ?? [],
+          allowClear: true,
+          showSearch: true,
+          optionFilterProp: 'label',
+          placeholder: $t('task.execution.filterWorkflowPlaceholder'),
         },
       },
     ]);
