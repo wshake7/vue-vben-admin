@@ -3,6 +3,12 @@
  * 字段对齐 backend-mock-template camelCase 输出
  */
 
+/** 任务配置下拉选项（workflowType / taskQueue） */
+export interface TaskSelectOption {
+  label: string;
+  value: string;
+}
+
 export interface TaskConfig {
   id: number;
   code: string;

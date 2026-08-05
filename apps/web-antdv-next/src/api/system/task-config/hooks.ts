@@ -9,6 +9,7 @@ import type {
   TaskConfigBatchRequest,
   TaskConfigBatchResult,
   TaskConfigQuery,
+  TaskSelectOption,
   TaskTriggerResult,
   UpdateTaskConfigRequest,
 } from './types';
@@ -20,6 +21,8 @@ import {
   createTaskConfigApi,
   deleteTaskConfigApi,
   fetchTaskConfigListApi,
+  fetchTaskQueuesApi,
+  fetchTaskWorkflowTypesApi,
   triggerTaskConfigApi,
   updateTaskConfigApi,
 } from '.';
@@ -42,6 +45,34 @@ export function useListTaskConfig(
   return useQuery({
     queryKey: ['task-config', 'list', stable] as const,
     queryFn: () => fetchTaskConfigListApi(stable),
+    ...options,
+  });
+}
+
+export function useListTaskWorkflowTypes(
+  options?: Omit<
+    UseQueryOptions<TaskSelectOption[], Error>,
+    'queryFn' | 'queryKey'
+  >,
+) {
+  return useQuery({
+    queryKey: ['task-config', 'workflow-types'] as const,
+    queryFn: () => fetchTaskWorkflowTypesApi(),
+    staleTime: 60_000,
+    ...options,
+  });
+}
+
+export function useListTaskQueues(
+  options?: Omit<
+    UseQueryOptions<TaskSelectOption[], Error>,
+    'queryFn' | 'queryKey'
+  >,
+) {
+  return useQuery({
+    queryKey: ['task-config', 'task-queues'] as const,
+    queryFn: () => fetchTaskQueuesApi(),
+    staleTime: 60_000,
     ...options,
   });
 }

@@ -2,6 +2,7 @@
 import type {
   CreateTaskConfigRequest,
   TaskConfig,
+  TaskSelectOption,
 } from '#/api/system/task-config';
 
 import { computed, reactive, ref } from 'vue';
@@ -14,12 +15,15 @@ import {
   Input,
   InputNumber,
   message,
+  Select,
   Switch,
   TextArea,
 } from 'antdv-next';
 
 import {
   createTaskConfigApi,
+  fetchTaskQueuesApi,
+  fetchTaskWorkflowTypesApi,
   updateTaskConfigApi,
 } from '#/api/system/task-config';
 import { $t } from '#/locales';
@@ -28,11 +32,24 @@ const emits = defineEmits<{
   (e: 'success'): void;
 }>();
 
+function mergeCurrentOption(
+  options: TaskSelectOption[],
+  current: null | string | undefined,
+): TaskSelectOption[] {
+  const v = (current ?? '').trim();
+  if (!v) return options;
+  if (options.some((o) => o.value === v)) return options;
+  return [{ label: v, value: v }, ...options];
+}
+
 const CODE_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 
 const id = ref<number | undefined>();
 const isEdit = computed(() => !!id.value);
 const saving = ref(false);
+const workflowTypeOptions = ref<TaskSelectOption[]>([]);
+const taskQueueOptions = ref<TaskSelectOption[]>([]);
+const optionsLoading = ref(false);
 
 interface FormModel {
   code: string;
@@ -57,6 +74,30 @@ const model = reactive<FormModel>({
   remark: '',
   isEnabled: 1,
 });
+
+const workflowSelectOptions = computed(() =>
+  mergeCurrentOption(workflowTypeOptions.value, model.workflowType),
+);
+const queueSelectOptions = computed(() =>
+  mergeCurrentOption(taskQueueOptions.value, model.taskQueue),
+);
+
+async function loadSelectOptions() {
+  optionsLoading.value = true;
+  try {
+    const [wf, queues] = await Promise.all([
+      fetchTaskWorkflowTypesApi(),
+      fetchTaskQueuesApi(),
+    ]);
+    workflowTypeOptions.value = wf ?? [];
+    taskQueueOptions.value = queues ?? [];
+  } catch {
+    workflowTypeOptions.value = [];
+    taskQueueOptions.value = [];
+  } finally {
+    optionsLoading.value = false;
+  }
+}
 
 function resetModel() {
   Object.assign(model, {
@@ -125,6 +166,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
   async onOpenChange(isOpen) {
     if (!isOpen) return;
     resetModel();
+    await loadSelectOptions();
 
     const data = drawerApi.getData<{
       mode: 'create' | 'edit';
@@ -233,19 +275,29 @@ async function save() {
         </div>
         <div>
           <FormItem :label="$t('task.config.workflowType')" required>
-            <Input
+            <Select
               v-model:value="model.workflowType"
-              :maxlength="128"
+              show-search
+              option-filter-prop="label"
+              :loading="optionsLoading"
+              :options="workflowSelectOptions"
               :placeholder="$t('task.config.workflowTypePlaceholder')"
+              allow-clear
+              style="width: 100%"
             />
           </FormItem>
         </div>
         <div>
           <FormItem :label="$t('task.config.taskQueue')" required>
-            <Input
+            <Select
               v-model:value="model.taskQueue"
-              :maxlength="128"
+              show-search
+              option-filter-prop="label"
+              :loading="optionsLoading"
+              :options="queueSelectOptions"
               :placeholder="$t('task.config.taskQueuePlaceholder')"
+              allow-clear
+              style="width: 100%"
             />
           </FormItem>
         </div>

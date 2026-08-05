@@ -5,6 +5,7 @@ import type {
   TaskConfigBatchRequest,
   TaskConfigBatchResult,
   TaskConfigQuery,
+  TaskSelectOption,
   TaskTriggerResult,
   UpdateTaskConfigRequest,
 } from './types';
@@ -16,6 +17,20 @@ export function fetchTaskConfigListApi(params: TaskConfigQuery = {}) {
   return requestClient.get<PageResult<TaskConfig>>('/system/task-config/list', {
     params,
   });
+}
+
+/** 工作流类型下拉选项 */
+export function fetchTaskWorkflowTypesApi() {
+  return requestClient.get<TaskSelectOption[]>(
+    '/system/task-config/workflow-types',
+  );
+}
+
+/** 任务队列下拉选项 */
+export function fetchTaskQueuesApi() {
+  return requestClient.get<TaskSelectOption[]>(
+    '/system/task-config/task-queues',
+  );
 }
 
 /** 任务配置详情 */
