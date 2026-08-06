@@ -57,6 +57,7 @@
     "runId": "Run ID",
     "configName": "任务名称",
     "status": "状态",
+    "createdAt": "创建时间",
     "startedAt": "开始时间",
     "closedAt": "结束时间",
     "duration": "耗时",

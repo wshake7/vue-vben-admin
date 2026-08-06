@@ -74,6 +74,9 @@ function jsonText(v: null | Record<string, unknown> | undefined) {
           {{ statusLabel }}
         </Tag>
       </DescriptionsItem>
+      <DescriptionsItem :label="$t('task.execution.createdAt')">
+        {{ dash(row.createdAt) }}
+      </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.startedAt')">
         {{ dash(row.startedAt) }}
       </DescriptionsItem>
@@ -82,15 +85,6 @@ function jsonText(v: null | Record<string, unknown> | undefined) {
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.duration')">
         {{ formatDuration(row.startedAt, row.closedAt) }}
-      </DescriptionsItem>
-      <DescriptionsItem :label="$t('task.execution.failureReason')">
-        <pre
-          v-if="row.failureReason"
-          class="m-0 max-h-40 overflow-auto whitespace-pre-wrap break-all font-sans text-sm"
-          >{{ row.failureReason }}</pre>
-        <span v-else style="color: var(--ant-color-text-secondary)">
-          {{ $t('task.execution.noFailure') }}
-        </span>
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.inputSummary')">
         <pre
@@ -101,6 +95,15 @@ function jsonText(v: null | Record<string, unknown> | undefined) {
         <pre
           class="m-0 max-h-40 overflow-auto whitespace-pre-wrap break-all font-mono text-xs"
           >{{ jsonText(row.resultSummary) }}</pre>
+      </DescriptionsItem>
+      <DescriptionsItem :label="$t('task.execution.failureReason')">
+        <pre
+          v-if="row.failureReason"
+          class="m-0 max-h-40 overflow-auto whitespace-pre-wrap break-all font-sans text-sm"
+          >{{ row.failureReason }}</pre>
+        <span v-else style="color: var(--ant-color-text-secondary)">
+          {{ $t('task.execution.noFailure') }}
+        </span>
       </DescriptionsItem>
     </Descriptions>
   </Drawer>

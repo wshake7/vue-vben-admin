@@ -57,6 +57,7 @@
     "runId": "Run ID",
     "configName": "Task Name",
     "status": "Status",
+    "createdAt": "Created At",
     "startedAt": "Started",
     "closedAt": "Closed",
     "duration": "Duration",
