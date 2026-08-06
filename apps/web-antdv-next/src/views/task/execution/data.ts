@@ -92,8 +92,10 @@ export function useExecutionColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'duration' },
     },
     {
+      field: 'failureReason',
       title: $t('task.execution.failureReason'),
-      width: 120,
+      minWidth: 160,
+      showOverflow: true,
       slots: { default: 'failure' },
     },
   ];

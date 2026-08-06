@@ -5,7 +5,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
-import { Button, Tag } from 'antdv-next';
+import { Tag } from 'antdv-next';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -37,20 +37,17 @@ function openDetail(row: TaskExecution) {
   detailDrawerApi.setData({ row }).open();
 }
 
-function hasFailure(row: TaskExecution) {
-  return (
-    Boolean(row.failureReason) ||
-    row.status === 'FAILED' ||
-    row.status === 'TIMED_OUT' ||
-    row.status === 'TERMINATED'
-  );
-}
-
 const [Grid, gridApi] = useVbenVxeGrid<TaskExecution>({
   formOptions: {
     collapsed: false,
     schema: useExecutionSearchSchema(),
     showCollapseButton: false,
+  },
+  // 与日志审计一致：点击行打开详情
+  gridEvents: {
+    cellClick: ({ row }: { row: TaskExecution }) => {
+      openDetail(row);
+    },
   },
   gridOptions: {
     columns: useExecutionColumns(),
@@ -167,14 +164,7 @@ onBeforeUnmount(() => {
         {{ formatDuration(row.startedAt, row.closedAt) }}
       </template>
       <template #failure="{ row }">
-        <Button
-          v-if="hasFailure(row)"
-          type="link"
-          size="small"
-          @click="openDetail(row)"
-        >
-          {{ $t('task.execution.viewFailure') }}
-        </Button>
+        <span v-if="row.failureReason">{{ row.failureReason }}</span>
         <span v-else style="color: var(--ant-color-text-secondary)">—</span>
       </template>
     </Grid>
