@@ -9,6 +9,7 @@ export type TaskExecutionStatus =
   | 'CONTINUED_AS_NEW'
   | 'FAILED'
   | 'PENDING'
+  | 'RETRYING'
   | 'RUNNING'
   | 'TERMINATED'
   | 'TIMED_OUT';
@@ -29,6 +30,8 @@ export interface TaskExecution {
   inputSummary: null | Record<string, unknown>;
   resultSummary: null | Record<string, unknown>;
   failureReason: null | string;
+  /** 已发生重试次数；首次执行为 0 */
+  retryCount: number;
   createdAt: string;
 }
 

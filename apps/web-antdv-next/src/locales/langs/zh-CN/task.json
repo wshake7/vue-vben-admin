@@ -57,6 +57,7 @@
     "runId": "Run ID",
     "configName": "任务名称",
     "status": "状态",
+    "retryCount": "重试次数",
     "createdAt": "创建时间",
     "startedAt": "开始时间",
     "closedAt": "结束时间",
@@ -80,6 +81,7 @@
   "status": {
     "PENDING": "等待中",
     "RUNNING": "运行中",
+    "RETRYING": "重试中",
     "COMPLETED": "已完成",
     "FAILED": "失败",
     "CANCELLED": "已取消",

@@ -9,6 +9,7 @@ export const EXECUTION_STATUS_OPTIONS: Array<{
 }> = [
   { label: $t('task.status.PENDING'), value: 'PENDING' },
   { label: $t('task.status.RUNNING'), value: 'RUNNING' },
+  { label: $t('task.status.RETRYING'), value: 'RETRYING' },
   { label: $t('task.status.COMPLETED'), value: 'COMPLETED' },
   { label: $t('task.status.FAILED'), value: 'FAILED' },
   { label: $t('task.status.CANCELLED'), value: 'CANCELLED' },
@@ -20,6 +21,7 @@ export const EXECUTION_STATUS_OPTIONS: Array<{
 export const STATUS_TAG_COLOR: Record<string, string> = {
   PENDING: 'default',
   RUNNING: 'processing',
+  RETRYING: 'processing',
   COMPLETED: 'success',
   FAILED: 'error',
   CANCELLED: 'default',
@@ -74,6 +76,11 @@ export function useExecutionColumns(): VxeTableGridOptions['columns'] {
       title: $t('task.execution.status'),
       width: 120,
       slots: { default: 'status' },
+    },
+    {
+      field: 'retryCount',
+      title: $t('task.execution.retryCount'),
+      width: 90,
     },
     {
       field: 'startedAt',

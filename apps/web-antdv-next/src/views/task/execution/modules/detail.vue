@@ -74,6 +74,9 @@ function jsonText(v: null | Record<string, unknown> | undefined) {
           {{ statusLabel }}
         </Tag>
       </DescriptionsItem>
+      <DescriptionsItem :label="$t('task.execution.retryCount')">
+        {{ row.retryCount ?? 0 }}
+      </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.createdAt')">
         {{ dash(row.createdAt) }}
       </DescriptionsItem>

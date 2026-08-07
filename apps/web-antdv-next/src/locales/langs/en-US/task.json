@@ -57,6 +57,7 @@
     "runId": "Run ID",
     "configName": "Task Name",
     "status": "Status",
+    "retryCount": "Retry Count",
     "createdAt": "Created At",
     "startedAt": "Started",
     "closedAt": "Closed",
@@ -80,6 +81,7 @@
   "status": {
     "PENDING": "Pending",
     "RUNNING": "Running",
+    "RETRYING": "Retrying",
     "COMPLETED": "Completed",
     "FAILED": "Failed",
     "CANCELLED": "Cancelled",
