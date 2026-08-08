@@ -160,6 +160,9 @@ onBeforeUnmount(() => {
           {{ executionStatusLabel(row.status) }}
         </Tag>
       </template>
+      <template #waitDuration="{ row }">
+        {{ formatDuration(row.pendingAt, row.startedAt) }}
+      </template>
       <template #duration="{ row }">
         {{ formatDuration(row.startedAt, row.closedAt) }}
       </template>

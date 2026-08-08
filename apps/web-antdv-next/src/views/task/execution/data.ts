@@ -93,6 +93,12 @@ export function useExecutionColumns(): VxeTableGridOptions['columns'] {
       minWidth: 170,
     },
     {
+      field: 'waitDuration',
+      title: $t('task.execution.waitDuration'),
+      width: 100,
+      slots: { default: 'waitDuration' },
+    },
+    {
       field: 'duration',
       title: $t('task.execution.duration'),
       width: 100,
