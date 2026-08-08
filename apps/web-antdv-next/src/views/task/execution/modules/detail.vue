@@ -80,6 +80,9 @@ function jsonText(v: null | Record<string, unknown> | undefined) {
       <DescriptionsItem :label="$t('task.execution.createdAt')">
         {{ dash(row.createdAt) }}
       </DescriptionsItem>
+      <DescriptionsItem :label="$t('task.execution.pendingAt')">
+        {{ dash(row.pendingAt) }}
+      </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.startedAt')">
         {{ dash(row.startedAt) }}
       </DescriptionsItem>

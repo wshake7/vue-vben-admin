@@ -25,7 +25,10 @@ export interface TaskExecution {
   workflowType: string;
   taskQueue: string;
   status: string | TaskExecutionStatus;
-  startedAt: string;
+  /** 进入等待中的时间 */
+  pendingAt: null | string;
+  /** 真正运行开始时间；尚未真正运行时为 null */
+  startedAt: null | string;
   closedAt: null | string;
   inputSummary: null | Record<string, unknown>;
   resultSummary: null | Record<string, unknown>;
