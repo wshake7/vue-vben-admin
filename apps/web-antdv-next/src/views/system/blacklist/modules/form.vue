@@ -30,24 +30,26 @@ const saving = ref(false);
 /** 编辑前 expiresAt 是否非空，用于判断是否需要 clearExpiresAt */
 const hadExpiresAt = ref(false);
 
+/** 与 React blacklist / Java LocalDateTime 一致：本地墙钟，无时区后缀 */
+const DATETIME_PAYLOAD = 'YYYY-MM-DDTHH:mm:ss';
+
 function toDayjs(value: null | string | undefined): Dayjs | undefined {
   if (value === null || value === undefined || value === '') return undefined;
   const d = dayjs(value);
   return d.isValid() ? d : undefined;
 }
 
-function toIso(value: unknown): null | string {
+function toDateTimePayload(value: unknown): null | string {
   if (value === null || value === undefined || value === '') return null;
+  if (dayjs.isDayjs(value)) {
+    return value.isValid() ? value.format(DATETIME_PAYLOAD) : null;
+  }
   if (typeof value === 'string') {
     const d = dayjs(value);
-    return d.isValid() ? d.toISOString() : null;
+    return d.isValid() ? d.format(DATETIME_PAYLOAD) : null;
   }
-  if (dayjs.isDayjs(value)) {
-    return value.isValid() ? value.toISOString() : null;
-  }
-  // Date / 其他可解析
   const d = dayjs(value as Date | number | string);
-  return d.isValid() ? d.toISOString() : null;
+  return d.isValid() ? d.format(DATETIME_PAYLOAD) : null;
 }
 
 const [Form, formApi] = useVbenForm({
@@ -61,12 +63,12 @@ const [Drawer, drawerApi] = useVbenDrawer({
     if (!valid) return;
     const values = await formApi.getValues();
 
-    const startsAt = toIso(values.startsAt);
+    const startsAt = toDateTimePayload(values.startsAt);
     if (!startsAt) {
       message.warning($t('system.blacklist.startsAtRequired'));
       return;
     }
-    const expiresAt = toIso(values.expiresAt);
+    const expiresAt = toDateTimePayload(values.expiresAt);
     if (expiresAt !== null && !dayjs(expiresAt).isAfter(dayjs(startsAt))) {
       message.warning($t('system.blacklist.expiresAfterStarts'));
       return;
