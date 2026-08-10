@@ -12,9 +12,9 @@ export interface SysBlacklist {
   targetValue: string;
   scope: BlacklistScope;
   reason: string;
-  /** ISO 时间；含边界 */
+  /** 时间字符串；含边界 */
   startsAt: string;
-  /** ISO 时间；null=永不过期 */
+  /** 时间字符串；null=永不过期 */
   expiresAt: null | string;
   remark: string;
   isEnabled: 0 | 1;
@@ -28,16 +28,16 @@ export interface SysBlacklist {
 export interface BlacklistListQuery {
   page?: number;
   pageSize?: number;
-  targetType?: BlacklistTargetType | string;
+  targetType?: BlacklistTargetType;
   targetValue?: string;
-  scope?: BlacklistScope | string;
+  scope?: BlacklistScope;
   status?: 0 | 1;
 }
 
 export interface CreateBlacklistRequest {
-  targetType: BlacklistTargetType | string;
+  targetType: BlacklistTargetType;
   targetValue: string;
-  scope?: BlacklistScope | string;
+  scope?: BlacklistScope;
   reason?: string;
   startsAt?: null | string;
   expiresAt?: null | string;
@@ -51,12 +51,12 @@ export interface UpdateBlacklistRequest {
     /** 为 true 时将 expiresAt 清空为永久封禁 */
     clearExpiresAt?: boolean | null;
     expiresAt?: null | string;
-    isEnabled?: 0 | 1 | boolean | null;
+    isEnabled?: 0 | 1 | null;
     reason?: null | string;
     remark?: null | string;
-    scope?: BlacklistScope | null | string;
+    scope?: BlacklistScope | null;
     startsAt?: null | string;
-    targetType?: BlacklistTargetType | null | string;
+    targetType?: BlacklistTargetType | null;
     targetValue?: null | string;
   };
 }
