@@ -72,6 +72,16 @@ const routes: RouteRecordRaw[] = [
           title: $t('system.api.title'),
         },
       },
+      {
+        name: 'SystemBlacklist',
+        path: 'blacklist',
+        component: () => import('#/views/system/blacklist/index.vue'),
+        meta: {
+          icon: 'lucide:shield-ban',
+          order: 7,
+          title: $t('system.blacklist.title'),
+        },
+      },
     ],
   },
 ];
