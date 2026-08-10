@@ -21,6 +21,7 @@ export function useUserColumns(): VxeTableGridOptions['columns'] {
     { field: 'roleNames', title: '角色', minWidth: 160 },
     { field: 'isEnabled', title: '状态', width: 80 },
     { field: 'lastLoginAt', title: '最后登录', minWidth: 160 },
+    { field: 'accountExpiresAt', title: '账号过期', minWidth: 160 },
     { title: '操作', fixed: 'right', width: 220, slots: { default: 'action' } },
   ];
 }

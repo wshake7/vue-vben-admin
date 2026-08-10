@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { Dayjs } from 'dayjs';
+
 import type { SysRole } from '#/api/system/role';
 import type { UserListItem } from '#/api/system/user';
 
@@ -7,6 +9,7 @@ import { computed, reactive, ref } from 'vue';
 import { useVbenDrawer } from '@vben/common-ui';
 
 import {
+  DatePicker,
   Form,
   FormItem,
   Input,
@@ -15,6 +18,7 @@ import {
   Switch,
   TextArea,
 } from 'antdv-next';
+import dayjs from 'dayjs';
 
 import { fetchAllI18nLocalesApi } from '#/api/system/i18n';
 import { fetchAllRolesApi } from '#/api/system/role';
@@ -44,6 +48,8 @@ interface FormModel {
   confirmPassword: string;
   roleIds: number[];
   remark: string;
+  /** null = 永不过期 */
+  accountExpiresAt: Dayjs | null;
 }
 
 const model = reactive<FormModel>({
@@ -58,7 +64,14 @@ const model = reactive<FormModel>({
   confirmPassword: '',
   roleIds: [],
   remark: '',
+  accountExpiresAt: null,
 });
+
+function toDayjs(value: null | string | undefined): Dayjs | null {
+  if (value === null || value === undefined || value === '') return null;
+  const d = dayjs(value);
+  return d.isValid() ? d : null;
+}
 
 function resetModel() {
   Object.assign(model, {
@@ -73,6 +86,7 @@ function resetModel() {
     confirmPassword: '',
     roleIds: [],
     remark: '',
+    accountExpiresAt: null,
   });
 }
 
@@ -89,6 +103,7 @@ function fillModelFromRow(row: UserListItem) {
     confirmPassword: '',
     roleIds: [...row.roleIds],
     remark: row.remark ?? '',
+    accountExpiresAt: toDayjs(row.accountExpiresAt),
   });
 }
 
@@ -153,6 +168,10 @@ async function save() {
     }
   }
 
+  const accountExpiresAt = model.accountExpiresAt
+    ? model.accountExpiresAt.toISOString()
+    : null;
+
   saving.value = true;
   try {
     if (isEdit.value && id.value) {
@@ -167,6 +186,7 @@ async function save() {
           isEnabled: model.isEnabled,
           remark: model.remark,
           roleIds: model.roleIds,
+          accountExpiresAt,
         },
       });
       message.success('保存成功');
@@ -182,6 +202,7 @@ async function save() {
         isEnabled: model.isEnabled,
         roleIds: model.roleIds,
         remark: model.remark,
+        accountExpiresAt,
       });
       message.success('创建成功');
     }
@@ -271,6 +292,17 @@ async function save() {
               :un-checked-value="0"
               checked-children="启用"
               un-checked-children="禁用"
+            />
+          </FormItem>
+        </div>
+        <div class="col-span-2">
+          <FormItem label="账号过期时间">
+            <DatePicker
+              v-model:value="model.accountExpiresAt"
+              show-time
+              allow-clear
+              style="width: 100%"
+              placeholder="留空表示永不过期"
             />
           </FormItem>
         </div>
