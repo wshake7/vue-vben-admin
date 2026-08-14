@@ -76,6 +76,18 @@ describe('dateUtils', () => {
       const result = formatDateTime(sampleISO);
       expect(result).toMatch(/2024-10-30 \d{2}:\d{2}:\d{2}/);
     });
+
+    it('should treat naive strings as Asia/Shanghai then display in user tz', () => {
+      setCurrentTimezone('America/New_York');
+      expect(formatDateTime('2026-08-14T16:00:00')).toBe('2026-08-14 04:00:00');
+    });
+
+    it('should parse offset strings as instants then display in user tz', () => {
+      setCurrentTimezone('America/New_York');
+      expect(formatDateTime('2026-08-14T16:00:00+08:00')).toBe(
+        '2026-08-14 04:00:00',
+      );
+    });
   });
 
   // ===============================

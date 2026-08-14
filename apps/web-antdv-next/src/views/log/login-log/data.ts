@@ -36,7 +36,7 @@ export function useLoginLogColumns(): VxeTableGridOptions['columns'] {
       minWidth: 140,
       slots: { default: 'os' },
     },
-    { field: 'loginTime', title: '登录时间', minWidth: 170 },
+    { field: 'loginTime', title: '登录时间', minWidth: 170, formatter: 'formatDateTime' },
     { field: 'location', title: '地理位置', minWidth: 110 },
     { field: 'reason', title: '失败原因', minWidth: 160 },
   ];

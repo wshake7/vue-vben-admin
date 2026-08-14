@@ -4,6 +4,7 @@ import type { ApiLogListItem } from '#/api/system/api-log';
 import { ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { formatDateTime } from '@vben/utils';
 
 import { Descriptions, DescriptionsItem, Tag } from 'antdv-next';
 
@@ -131,7 +132,7 @@ function methodColor(method: string) {
         <span class="break-all">{{ dash(row.userAgent) }}</span>
       </DescriptionsItem>
       <DescriptionsItem label="创建时间">
-        {{ dash(row.createdAt) }}
+        {{ formatDateTime(row.createdAt) || '-' }}
       </DescriptionsItem>
       <DescriptionsItem v-if="row.archivedAt" label="归档时间">
         {{ row.archivedAt }}

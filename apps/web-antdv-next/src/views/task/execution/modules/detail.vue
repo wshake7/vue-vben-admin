@@ -4,6 +4,7 @@ import type { TaskExecution } from '#/api/system/task-execution';
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { formatDateTime } from '@vben/utils';
 
 import { Descriptions, DescriptionsItem, Tag } from 'antdv-next';
 
@@ -78,16 +79,16 @@ function jsonText(v: null | Record<string, unknown> | undefined) {
         {{ row.retryCount ?? 0 }}
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.createdAt')">
-        {{ dash(row.createdAt) }}
+        {{ formatDateTime(row.createdAt) || '—' }}
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.pendingAt')">
-        {{ dash(row.pendingAt) }}
+        {{ formatDateTime(row.pendingAt) || '—' }}
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.startedAt')">
-        {{ dash(row.startedAt) }}
+        {{ formatDateTime(row.startedAt) || '—' }}
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.closedAt')">
-        {{ dash(row.closedAt) }}
+        {{ formatDateTime(row.closedAt) || '—' }}
       </DescriptionsItem>
       <DescriptionsItem :label="$t('task.execution.duration')">
         {{ formatDuration(row.startedAt, row.closedAt) }}

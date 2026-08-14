@@ -4,6 +4,7 @@ import type { LoginLogListItem } from '#/api/system/login-log';
 import { ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { formatDateTime } from '@vben/utils';
 
 import { Descriptions, DescriptionsItem, Tag } from 'antdv-next';
 
@@ -54,7 +55,7 @@ function dash(v: null | number | string | undefined) {
         {{ dash(row.loginMethod) }}
       </DescriptionsItem>
       <DescriptionsItem label="登录时间">
-        {{ dash(row.loginTime) }}
+        {{ formatDateTime(row.loginTime) || '-' }}
       </DescriptionsItem>
       <DescriptionsItem label="登录 IP">
         {{ dash(row.loginIp) }}
@@ -83,10 +84,10 @@ function dash(v: null | number | string | undefined) {
         <span class="break-all">{{ dash(row.userAgent) }}</span>
       </DescriptionsItem>
       <DescriptionsItem label="创建时间">
-        {{ dash(row.createdAt) }}
+        {{ formatDateTime(row.createdAt) || '-' }}
       </DescriptionsItem>
       <DescriptionsItem v-if="row.archivedAt" label="归档时间">
-        {{ row.archivedAt }}
+        {{ formatDateTime(row.archivedAt) }}
       </DescriptionsItem>
     </Descriptions>
   </Drawer>

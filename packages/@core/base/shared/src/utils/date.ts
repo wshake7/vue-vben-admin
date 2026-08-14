@@ -5,6 +5,9 @@ import utc from 'dayjs/plugin/utc.js';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+/** 平台墙钟；无 offset 的 API 字符串按此时区解析。 */
+export const PLATFORM_TIMEZONE = 'Asia/Shanghai';
+
 type FormatDate = Date | dayjs.Dayjs | number | string;
 
 type Format =
@@ -24,11 +27,11 @@ export function formatDate(time?: FormatDate, format: Format = 'YYYY-MM-DD') {
     return '';
   }
   try {
-    const date = dayjs.isDayjs(time) ? time : dayjs(time);
+    const date = toDisplayDayjs(time);
     if (!date.isValid()) {
       throw new Error('Invalid date');
     }
-    return date.tz().format(format);
+    return date.format(format);
   } catch (error) {
     console.error(`Error formatting date: ${error}`);
     return String(time ?? '');
@@ -37,6 +40,28 @@ export function formatDate(time?: FormatDate, format: Format = 'YYYY-MM-DD') {
 
 export function formatDateTime(time?: FormatDate) {
   return formatDate(time, 'YYYY-MM-DD HH:mm:ss');
+}
+
+function hasExplicitOffset(raw: string) {
+  const value = raw.trim();
+  return /Z$/i.test(value) || /[+-]\d{2}:\d{2}$/.test(value);
+}
+
+/**
+ * 有 offset / Instant 按物理时刻解析；无 offset 字符串当上海墙钟，再转到当前展示时区。
+ */
+function toDisplayDayjs(time: FormatDate) {
+  if (dayjs.isDayjs(time)) {
+    return time.tz();
+  }
+  if (typeof time === 'number' || time instanceof Date) {
+    return dayjs(time).tz();
+  }
+  const raw = String(time);
+  if (hasExplicitOffset(raw)) {
+    return dayjs(raw).tz();
+  }
+  return dayjs.tz(raw, PLATFORM_TIMEZONE).tz();
 }
 
 export function isDate(value: any): value is Date {

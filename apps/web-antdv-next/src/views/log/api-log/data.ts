@@ -38,7 +38,7 @@ export function useApiLogColumns(): VxeTableGridOptions['columns'] {
     { field: 'costTime', title: '耗时(ms)', width: 100 },
     { field: 'username', title: '用户', width: 110 },
     { field: 'clientIp', title: '客户端 IP', minWidth: 130 },
-    { field: 'createdAt', title: '时间', minWidth: 170 },
+    { field: 'createdAt', title: '时间', minWidth: 170, formatter: 'formatDateTime' },
     { field: 'reason', title: '失败原因', minWidth: 140 },
   ];
 }

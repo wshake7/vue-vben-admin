@@ -9,6 +9,7 @@ import type {
 import { ref, watch } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
+import { formatDateTime } from '@vben/utils';
 
 import {
   Button,
@@ -503,11 +504,7 @@ const childColumns = [
 ];
 
 function formatUpdatedAt(value: string | undefined): string {
-  if (!value) return '-';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime())
-    ? value
-    : d.toLocaleString('zh-CN', { hour12: false });
+  return formatDateTime(value) || '-';
 }
 </script>
 

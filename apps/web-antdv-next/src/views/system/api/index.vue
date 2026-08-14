@@ -5,6 +5,7 @@ import type { ApiTreeNode } from '#/views/system/api/data';
 import { ref } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
+import { formatDateTime } from '@vben/utils';
 import { IconifyIcon } from '@vben/icons';
 
 import { Button, message, Popconfirm, Space, Tag } from 'antdv-next';
@@ -210,7 +211,7 @@ function isGroupRow(row: ApiTreeNode) {
       </template>
       <template #createdAt="{ row }">
         <span v-if="isGroupRow(row)" style="color: #999">-</span>
-        <span v-else>{{ row.createdAt }}</span>
+        <span v-else>{{ formatDateTime(row.createdAt) }}</span>
       </template>
       <template #action="{ row }">
         <Space v-if="!isGroupRow(row)">

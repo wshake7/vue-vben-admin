@@ -86,11 +86,13 @@ export function useExecutionColumns(): VxeTableGridOptions['columns'] {
       field: 'startedAt',
       title: $t('task.execution.startedAt'),
       minWidth: 170,
+      formatter: 'formatDateTime',
     },
     {
       field: 'closedAt',
       title: $t('task.execution.closedAt'),
       minWidth: 170,
+      formatter: 'formatDateTime',
     },
     {
       field: 'waitDuration',
