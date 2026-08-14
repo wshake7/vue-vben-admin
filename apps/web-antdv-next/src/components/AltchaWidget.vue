@@ -8,12 +8,14 @@
  *
  * 用法（VbenForm schema 自定义控件）：
  *   component: markRaw(AltchaWidget),
- *   componentProps: { challenge: '/api/altcha/challenge' },
+ *   componentProps: { challenge: 可选，默认拼接 apiURL + /altcha/challenge },
  *   rules: z.string().min(1, ...)
  *
  * 登录失败后可调用 expose 的 reset()，清空勾选并重新拉取 challenge。
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+
+import { useAppConfig } from '@vben/hooks';
 
 interface Props {
   challenge?: string;
@@ -23,10 +25,16 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  challenge: '/api/altcha/challenge',
+  challenge: '',
   language: 'zh',
   modelValue: '',
 });
+
+const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
+function resolveChallengeUrl() {
+  if (props.challenge) return props.challenge;
+  return `${String(apiURL || '/api').replace(/\/$/, '')}/altcha/challenge`;
+}
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
@@ -78,7 +86,7 @@ onMounted(() => {
     typeof widget
   >;
   widget.setAttribute('language', props.language);
-  widget.setAttribute('challenge', props.challenge);
+  widget.setAttribute('challenge', resolveChallengeUrl());
   // hideLogo/hideFooter 不是 HTML 属性，需走 configuration JSON
   // @see altcha create_custom_element props: configuration only
   widget.setAttribute(

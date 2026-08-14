@@ -54,7 +54,6 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       component: markRaw(AltchaWidget),
       componentProps: {
-        challenge: '/api/altcha/challenge',
         language: 'zh',
       },
       fieldName: 'altcha',
