@@ -3,7 +3,7 @@
  * 字段对齐 backend-mock / Java BlacklistVO（对外 camelCase）
  */
 
-export type BlacklistTargetType = 'DEVICE' | 'IP' | 'USER';
+export type BlacklistTargetType = 'DEVICE' | 'IP' | 'SYS_USER';
 export type BlacklistScope = 'ALL' | 'API' | 'LOGIN';
 
 export interface SysBlacklist {

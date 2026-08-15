@@ -16,7 +16,7 @@ export const TARGET_TYPE_OPTIONS: Array<{
   value: BlacklistTargetType;
 }> = [
   { label: 'IP', value: 'IP' },
-  { label: 'USER', value: 'USER' },
+  { label: 'SYS_USER', value: 'SYS_USER' },
   { label: 'DEVICE', value: 'DEVICE' },
 ];
 
@@ -28,7 +28,7 @@ export const SCOPE_OPTIONS: Array<{ label: string; value: BlacklistScope }> = [
 
 export const TARGET_TYPE_COLOR: Record<BlacklistTargetType, string> = {
   IP: 'blue',
-  USER: 'purple',
+  SYS_USER: 'purple',
   DEVICE: 'orange',
 };
 
