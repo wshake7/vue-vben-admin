@@ -42,7 +42,7 @@
     "@vben/types": "workspace:*",
     "@vben/utils": "workspace:*",
     "@vueuse/core": "catalog:",
-    "altcha": "3.2.1",
+    "altcha": "3.4.0",
     "antdv-next": "catalog:",
     "dayjs": "catalog:",
     "jszip": "catalog:",
